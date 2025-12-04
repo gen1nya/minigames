@@ -1,5 +1,6 @@
 // Types
 export interface Ring {
+  id: string;
   color: string;
 }
 
@@ -70,6 +71,7 @@ export class SortingGameLogic {
   private readonly _config: DifficultyConfig;
   private readonly _colors: string[];
   private readonly _maxHistorySize = 200;
+  private _nextRingId = 0;
 
   constructor(
     difficulty: DifficultyLevel,
@@ -80,6 +82,10 @@ export class SortingGameLogic {
     this._state = [];
     this._history = [];
     this.reset();
+  }
+
+  private generateRingId(): string {
+    return `ring-${this._nextRingId++}`;
   }
 
   // Getters for read-only access
@@ -211,7 +217,10 @@ export class SortingGameLogic {
     const ringsPool: Ring[] = [];
 
     for (let i = 0; i < totalSlots; i++) {
-      ringsPool.push({ color: this._colors[i % this._colors.length] });
+      ringsPool.push({
+        id: this.generateRingId(),
+        color: this._colors[i % this._colors.length],
+      });
     }
 
     const shuffled = shuffleArray(ringsPool, this._random);
@@ -229,7 +238,7 @@ export class SortingGameLogic {
   }
 
   private pushHistory(): void {
-    const copy = this._state.map(peg => peg.map(r => ({ color: r.color })));
+    const copy = this._state.map(peg => peg.map(r => ({ id: r.id, color: r.color })));
     this._history.push(copy);
     if (this._history.length > this._maxHistorySize) {
       this._history.shift();

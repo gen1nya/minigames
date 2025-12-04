@@ -1,15 +1,35 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   DifficultyLevel,
   DIFFICULTY_LEVELS,
   DIFFICULTY_LABELS,
   SortingGameLogic,
   MoveResult,
+  Ring,
+  getTopBlockSize,
 } from './gameLogic';
 
 interface SortingGameProps {
   onBack: () => void;
+}
+
+interface FlyingRing {
+  id: string;
+  color: string;
+  startX: number;
+  startY: number;
+  liftY: number;      // Y position after lifting (top of source peg)
+  targetLiftY: number; // Y position at top of target peg
+  endX: number;
+  endY: number;
+}
+
+interface AnimationState {
+  id: string;
+  rings: FlyingRing[];
+  onComplete: () => void;
 }
 
 // Animations
@@ -34,6 +54,8 @@ const GameContainer = styled.div`
   width: 100%;
   background: #d6b58a;
   color: #222;
+  position: relative;
+  overflow: hidden;
 `;
 
 const Header = styled.header`
@@ -165,35 +187,72 @@ const PegInner = styled.div`
   z-index: 1;
 `;
 
-const RingElement = styled.div<{ $color: string; $isTop: boolean; $selected: boolean }>`
+const RingElement = styled.div<{ $color: string; $inSelectedGroup: boolean; $hidden?: boolean }>`
   width: 46px;
   height: var(--ring-height);
+  border-radius: 12px;
+  background: ${props => props.$color};
+  box-shadow: ${props => {
+    const baseShadow = props.$color === '#e5e5e5'
+      ? '0 0 0 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.35)'
+      : '0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.35)';
+
+    if (props.$inSelectedGroup) {
+      return `${baseShadow}, 0 0 12px 2px rgba(255, 255, 255, 0.8), 0 0 20px 4px rgba(255, 255, 255, 0.4)`;
+    }
+    return baseShadow;
+  }};
+  opacity: ${props => props.$hidden ? 0 : 1};
+  transition: box-shadow 0.15s ease;
+
+  ${props =>
+    props.$inSelectedGroup &&
+    !props.$hidden &&
+    css`
+      animation: ${lift} 0.3s ease-in-out infinite alternate;
+    `}
+`;
+
+const FlyingRingElement = styled(motion.div)<{ $color: string }>`
+  position: fixed;
+  width: 46px;
+  height: 24px;
   border-radius: 12px;
   background: ${props => props.$color};
   box-shadow: ${props =>
     props.$color === '#e5e5e5'
       ? '0 0 0 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.35)'
       : '0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.35)'};
+  z-index: 1000;
+  pointer-events: none;
 
-  ${props =>
-    props.$isTop &&
-    props.$selected &&
-    css`
-      animation: ${lift} 0.3s ease-in-out infinite alternate;
-    `}
+  @media (max-width: 700px) {
+    height: 18px;
+  }
+
+  @media (max-width: 500px) {
+    height: 14px;
+  }
 `;
 
-const ModalOverlay = styled.div<{ $visible: boolean }>`
+const FlyingRingsLayer = styled.div`
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+`;
+
+const ModalOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  display: ${props => (props.$visible ? 'flex' : 'none')};
+  display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
 `;
 
-const ModalContent = styled.div`
+const ModalContent = styled(motion.div)`
   background: #fff;
   padding: 20px 30px;
   border-radius: 12px;
@@ -217,7 +276,7 @@ const ModalButton = styled.button`
   cursor: pointer;
 `;
 
-const DifficultyModalContent = styled.div`
+const DifficultyModalContent = styled(motion.div)`
   background: #fff;
   padding: 30px;
   border-radius: 12px;
@@ -269,6 +328,17 @@ const CancelButton = styled.button`
   cursor: pointer;
 `;
 
+// Animation variants
+const modalOverlayVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+};
+
+const modalContentVariants = {
+  hidden: { opacity: 0, scale: 0.8, y: 20 },
+  visible: { opacity: 1, scale: 1, y: 0 },
+};
+
 // Main Component
 export default function SortingGame({ onBack }: SortingGameProps) {
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('extreme');
@@ -278,12 +348,19 @@ export default function SortingGame({ onBack }: SortingGameProps) {
   const [modalText, setModalText] = useState<string | null>(null);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [invalidPeg, setInvalidPeg] = useState<number | null>(null);
+  const [animations, setAnimations] = useState<AnimationState[]>([]);
+  const [hiddenRingIds, setHiddenRingIds] = useState<Set<string>>(new Set());
   const [, forceUpdate] = useState({});
+  const animationIdRef = useRef(0);
+
+  const pegRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Create new game when difficulty changes
   useEffect(() => {
     setGame(new SortingGameLogic(difficulty));
     setSelectedPeg(null);
+    setAnimations([]);
+    setHiddenRingIds(new Set());
     setMessage('Нажми на столбик, потом на другой, чтобы перенести кольца.');
   }, [difficulty]);
 
@@ -312,6 +389,98 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     }
   };
 
+  const getPegMetrics = (pegIndex: number) => {
+    const pegEl = pegRefs.current[pegIndex];
+    if (!pegEl) return null;
+
+    const pegRect = pegEl.getBoundingClientRect();
+    const pegInner = pegEl.querySelector('[data-peg-inner]') as HTMLElement;
+    if (!pegInner) return null;
+
+    const computedStyle = getComputedStyle(pegEl);
+    const ringHeight = parseFloat(computedStyle.getPropertyValue('--ring-height')) || 24;
+    const gap = 2;
+
+    const innerRect = pegInner.getBoundingClientRect();
+    const centerX = pegRect.left + pegRect.width / 2 - 23; // 23 = half of ring width
+    const bottomY = innerRect.bottom;
+    const topY = innerRect.top;
+
+    return { centerX, bottomY, topY, ringHeight, gap };
+  };
+
+  const getRingY = (metrics: NonNullable<ReturnType<typeof getPegMetrics>>, ringIndex: number) => {
+    const { bottomY, ringHeight, gap } = metrics;
+    return bottomY - (ringIndex + 1) * (ringHeight + gap) + gap;
+  };
+
+  const animateMove = (from: number, to: number, movingRings: Ring[], onComplete: () => void) => {
+    const fromPegState = game.state;
+    const fromRingCount = fromPegState[from].length;
+    const toRingCount = fromPegState[to].length;
+
+    const fromMetrics = getPegMetrics(from);
+    const toMetrics = getPegMetrics(to);
+
+    if (!fromMetrics || !toMetrics) {
+      onComplete();
+      return;
+    }
+
+    const liftGap = 20; // Gap above the peg top
+    const flyingRings: FlyingRing[] = [];
+
+    movingRings.forEach((ring, i) => {
+      const startY = getRingY(fromMetrics, fromRingCount - movingRings.length + i);
+      const endY = getRingY(toMetrics, toRingCount + i);
+
+      // Lift position: top of source peg - gap - stack offset for this ring in the group
+      const liftY = fromMetrics.topY - liftGap - (movingRings.length - 1 - i) * (fromMetrics.ringHeight + fromMetrics.gap);
+
+      // Target lift position: top of target peg - gap - stack offset
+      const targetLiftY = toMetrics.topY - liftGap - (movingRings.length - 1 - i) * (toMetrics.ringHeight + toMetrics.gap);
+
+      flyingRings.push({
+        id: ring.id,
+        color: ring.color,
+        startX: fromMetrics.centerX,
+        startY,
+        liftY,
+        targetLiftY,
+        endX: toMetrics.centerX,
+        endY,
+      });
+    });
+
+    if (flyingRings.length > 0) {
+      const animId = `anim-${animationIdRef.current++}`;
+      setHiddenRingIds(prev => {
+        const next = new Set(prev);
+        flyingRings.forEach(r => next.add(r.id));
+        return next;
+      });
+      setAnimations(prev => [...prev, { id: animId, rings: flyingRings, onComplete }]);
+    } else {
+      onComplete();
+    }
+  };
+
+  const handleAnimationComplete = (animId: string) => {
+    setAnimations(prev => {
+      const anim = prev.find(a => a.id === animId);
+      if (anim) {
+        anim.onComplete();
+        // Remove ring IDs from hidden set
+        setHiddenRingIds(hidden => {
+          const next = new Set(hidden);
+          anim.rings.forEach(r => next.delete(r.id));
+          return next;
+        });
+      }
+      return prev.filter(a => a.id !== animId);
+    });
+  };
+
   const handlePegTap = (index: number) => {
     if (selectedPeg === null) {
       if (!game.hasPeg(index)) {
@@ -322,15 +491,34 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     } else if (selectedPeg === index) {
       setSelectedPeg(null);
     } else {
-      const result = game.move(selectedPeg, index);
+      const from = selectedPeg;
+      const to = index;
+
+      // Check if move is valid before animating
+      if (!game.canMove(from, to)) {
+        setSelectedPeg(null);
+        blinkInvalid(to);
+        return;
+      }
+
+      // Get the rings that will be moved (before the actual move)
+      const sourcePeg = game.state[from];
+      const topColor = sourcePeg[sourcePeg.length - 1].color;
+      let blockSize = 1;
+      for (let i = sourcePeg.length - 2; i >= 0; i--) {
+        if (sourcePeg[i].color === topColor) blockSize++;
+        else break;
+      }
+      const movingRings = sourcePeg.slice(sourcePeg.length - blockSize);
+
       setSelectedPeg(null);
 
-      if (result === 'invalid') {
-        blinkInvalid(index);
-      } else {
+      // Start animation, then do the actual move
+      animateMove(from, to, movingRings, () => {
+        const result = game.move(from, to);
         triggerUpdate();
         handleMoveResult(result);
-      }
+      });
     }
   };
 
@@ -355,6 +543,8 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     game.reset();
     triggerUpdate();
     setSelectedPeg(null);
+    setAnimations([]);
+    setHiddenRingIds(new Set());
     setMessage('Нажми на столбик, потом на другой, чтобы перенести кольца.');
   };
 
@@ -362,6 +552,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     setDifficulty(level);
     setShowDifficultyModal(false);
   };
+
 
   return (
     <GameContainer>
@@ -376,58 +567,126 @@ export default function SortingGame({ onBack }: SortingGameProps) {
 
       <GameArea>
         <PegsContainer $maxHeight={game.config.height}>
-          {game.state.map((peg, pegIndex) => (
-            <Peg
-              key={pegIndex}
-              $selected={selectedPeg === pegIndex}
-              $invalid={invalidPeg === pegIndex}
-              onClick={() => handlePegTap(pegIndex)}
-            >
-              <PegRod
-                $selected={selectedPeg === pegIndex}
+          {game.state.map((peg, pegIndex) => {
+            const isSelected = selectedPeg === pegIndex;
+            const blockSize = isSelected ? getTopBlockSize(peg) : 0;
+
+            return (
+              <Peg
+                key={pegIndex}
+                ref={el => { pegRefs.current[pegIndex] = el; }}
+                $selected={isSelected}
                 $invalid={invalidPeg === pegIndex}
-              />
-              <PegInner>
-                {peg.map((ring, ringIndex) => (
-                  <RingElement
-                    key={ringIndex}
-                    $color={ring.color}
-                    $isTop={ringIndex === peg.length - 1}
-                    $selected={selectedPeg === pegIndex}
-                  />
-                ))}
-              </PegInner>
-            </Peg>
-          ))}
+                onClick={() => handlePegTap(pegIndex)}
+              >
+                <PegRod
+                  $selected={isSelected}
+                  $invalid={invalidPeg === pegIndex}
+                />
+                <PegInner data-peg-inner>
+                  {peg.map((ring, ringIndex) => {
+                    const inSelectedGroup = isSelected && ringIndex >= peg.length - blockSize;
+                    return (
+                      <RingElement
+                        key={ring.id}
+                        $color={ring.color}
+                        $inSelectedGroup={inSelectedGroup}
+                        $hidden={hiddenRingIds.has(ring.id)}
+                      />
+                    );
+                  })}
+                </PegInner>
+              </Peg>
+            );
+          })}
         </PegsContainer>
       </GameArea>
 
+      {/* Flying rings animation layer */}
+      <FlyingRingsLayer>
+        <AnimatePresence>
+          {animations.flatMap(anim =>
+            anim.rings.map((ring, index) => (
+              <FlyingRingElement
+                key={ring.id}
+                $color={ring.color}
+                initial={{
+                  x: ring.startX,
+                  y: ring.startY,
+                }}
+                animate={{
+                  x: [ring.startX, ring.startX, ring.endX, ring.endX],
+                  y: [ring.startY, ring.liftY, ring.targetLiftY, ring.endY],
+                }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 0.25,
+                  times: [0, 0.3, 0.7, 1],
+                  ease: ['easeOut', 'linear', 'easeIn'],
+                }}
+                onAnimationComplete={() => {
+                  if (index === anim.rings.length - 1) {
+                    handleAnimationComplete(anim.id);
+                  }
+                }}
+              />
+            ))
+          )}
+        </AnimatePresence>
+      </FlyingRingsLayer>
+
       {/* Info Modal */}
-      <ModalOverlay $visible={modalText !== null} onClick={() => setModalText(null)}>
-        <ModalContent onClick={e => e.stopPropagation()}>
-          <ModalText>{modalText}</ModalText>
-          <ModalButton onClick={() => setModalText(null)}>OK</ModalButton>
-        </ModalContent>
-      </ModalOverlay>
+      {modalText !== null && (
+        <ModalOverlay
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={modalOverlayVariants}
+          onClick={() => setModalText(null)}
+        >
+          <ModalContent
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            onClick={e => e.stopPropagation()}
+          >
+            <ModalText>{modalText}</ModalText>
+            <ModalButton onClick={() => setModalText(null)}>OK</ModalButton>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {/* Difficulty Modal */}
-      <ModalOverlay $visible={showDifficultyModal} onClick={() => setShowDifficultyModal(false)}>
-        <DifficultyModalContent onClick={e => e.stopPropagation()}>
-          <DifficultyTitle>Выберите сложность</DifficultyTitle>
-          <DifficultyButtons>
-            {(Object.keys(DIFFICULTY_LEVELS) as DifficultyLevel[]).map(level => (
-              <DifficultyButton
-                key={level}
-                $color={DIFFICULTY_LABELS[level].color}
-                onClick={() => handleDifficultySelect(level)}
-              >
-                {DIFFICULTY_LABELS[level].label}
-              </DifficultyButton>
-            ))}
-          </DifficultyButtons>
-          <CancelButton onClick={() => setShowDifficultyModal(false)}>Отмена</CancelButton>
-        </DifficultyModalContent>
-      </ModalOverlay>
+      {showDifficultyModal && (
+        <ModalOverlay
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={modalOverlayVariants}
+          onClick={() => setShowDifficultyModal(false)}
+        >
+          <DifficultyModalContent
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            onClick={e => e.stopPropagation()}
+          >
+            <DifficultyTitle>Выберите сложность</DifficultyTitle>
+            <DifficultyButtons>
+              {(Object.keys(DIFFICULTY_LEVELS) as DifficultyLevel[]).map(level => (
+                <DifficultyButton
+                  key={level}
+                  $color={DIFFICULTY_LABELS[level].color}
+                  onClick={() => handleDifficultySelect(level)}
+                >
+                  {DIFFICULTY_LABELS[level].label}
+                </DifficultyButton>
+              ))}
+            </DifficultyButtons>
+            <CancelButton onClick={() => setShowDifficultyModal(false)}>Отмена</CancelButton>
+          </DifficultyModalContent>
+        </ModalOverlay>
+      )}
     </GameContainer>
   );
 }

@@ -41,30 +41,30 @@ describe('getTopBlockSize', () => {
   });
 
   it('returns 1 for single ring', () => {
-    const peg: Ring[] = [{ color: 'red' }];
+    const peg: Ring[] = [{ id: '1', color: 'red' }];
     expect(getTopBlockSize(peg)).toBe(1);
   });
 
   it('returns 1 when top ring differs from below', () => {
-    const peg: Ring[] = [{ color: 'red' }, { color: 'blue' }];
+    const peg: Ring[] = [{ id: '1', color: 'red' }, { id: '2', color: 'blue' }];
     expect(getTopBlockSize(peg)).toBe(1);
   });
 
   it('counts consecutive same-color rings from top', () => {
     const peg: Ring[] = [
-      { color: 'red' },
-      { color: 'blue' },
-      { color: 'blue' },
-      { color: 'blue' },
+      { id: '1', color: 'red' },
+      { id: '2', color: 'blue' },
+      { id: '3', color: 'blue' },
+      { id: '4', color: 'blue' },
     ];
     expect(getTopBlockSize(peg)).toBe(3);
   });
 
   it('returns full length for single-color peg', () => {
     const peg: Ring[] = [
-      { color: 'red' },
-      { color: 'red' },
-      { color: 'red' },
+      { id: '1', color: 'red' },
+      { id: '2', color: 'red' },
+      { id: '3', color: 'red' },
     ];
     expect(getTopBlockSize(peg)).toBe(3);
   });
@@ -131,7 +131,23 @@ describe('SortingGameLogic', () => {
     it('produces deterministic results with seeded random', () => {
       const game1 = new SortingGameLogic('easy', createSeededRandom(0.5));
       const game2 = new SortingGameLogic('easy', createSeededRandom(0.5));
-      expect(game1.state).toEqual(game2.state);
+      // Compare colors only (IDs will differ between instances)
+      const colors1 = game1.state.map(peg => peg.map(r => r.color));
+      const colors2 = game2.state.map(peg => peg.map(r => r.color));
+      expect(colors1).toEqual(colors2);
+    });
+
+    it('assigns unique IDs to all rings', () => {
+      const game = new SortingGameLogic('easy');
+      const allIds = new Set<string>();
+
+      for (const peg of game.state) {
+        for (const ring of peg) {
+          expect(ring.id).toBeDefined();
+          expect(allIds.has(ring.id)).toBe(false);
+          allIds.add(ring.id);
+        }
+      }
     });
   });
 
