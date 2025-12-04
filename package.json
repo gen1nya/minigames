@@ -1,0 +1,32 @@
+{
+  "name": "minigames",
+  "version": "1.0.0",
+  "description": "Electron application with TypeScript",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite",
+    "dev:electron": "tsc -p tsconfig.node.json && NODE_ENV=development electron .",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "start": "npm run build && electron .",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "electron": "^33.2.0",
+    "typescript": "^5.3.0",
+    "vite": "^7.2.6"
+  },
+  "dependencies": {
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "styled-components": "^6.1.19"
+  }
+}
