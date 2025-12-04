@@ -1,50 +1,16 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-
-// Types
-interface Ring {
-  color: string;
-}
-
-interface DifficultyConfig {
-  pegs: number;
-  height: number;
-  colors: number;
-}
-
-type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'extreme' | 'insane';
+import {
+  DifficultyLevel,
+  DIFFICULTY_LEVELS,
+  DIFFICULTY_LABELS,
+  SortingGameLogic,
+  MoveResult,
+} from './gameLogic';
 
 interface SortingGameProps {
   onBack: () => void;
 }
-
-// Constants
-const DIFFICULTY_LEVELS: Record<DifficultyLevel, DifficultyConfig> = {
-  easy: { pegs: 7, height: 7, colors: 5 },
-  medium: { pegs: 8, height: 8, colors: 6 },
-  hard: { pegs: 9, height: 9, colors: 7 },
-  extreme: { pegs: 10, height: 10, colors: 8 },
-  insane: { pegs: 14, height: 8, colors: 6 },
-};
-
-const ALL_COLORS = [
-  '#f44336',
-  '#ff9800',
-  '#ffc107',
-  '#4caf50',
-  '#2196f3',
-  '#9c27b0',
-  '#e0e0e0',
-  '#000000',
-];
-
-const DIFFICULTY_LABELS: Record<DifficultyLevel, { label: string; color: string }> = {
-  easy: { label: 'Легко (7 столбцов, 5 цветов)', color: '#4caf50' },
-  medium: { label: 'Средне (8 столбцов, 6 цветов)', color: '#ff9800' },
-  hard: { label: 'Сложно (9 столбцов, 7 цветов)', color: '#f44336' },
-  extreme: { label: 'Экстремально (10 столбцов, 8 цветов)', color: '#9c27b0' },
-  insane: { label: 'Безумие (14 столбцов, 6 цветов × 2)', color: '#212121' },
-};
 
 // Animations
 const shake = keyframes`
@@ -205,7 +171,7 @@ const RingElement = styled.div<{ $color: string; $isTop: boolean; $selected: boo
   border-radius: 12px;
   background: ${props => props.$color};
   box-shadow: ${props =>
-    props.$color === '#e0e0e0'
+    props.$color === '#e5e5e5'
       ? '0 0 0 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.35)'
       : '0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.35)'};
 
@@ -303,156 +269,52 @@ const CancelButton = styled.button`
   cursor: pointer;
 `;
 
-// Helper functions
-function deepCopyState(s: Ring[][]): Ring[][] {
-  return s.map(peg => peg.map(r => ({ color: r.color })));
-}
-
-function createInitialState(config: DifficultyConfig, colors: string[]): Ring[][] {
-  const totalSlots = (config.pegs - 2) * config.height;
-  const ringsPool: Ring[] = [];
-
-  for (let i = 0; i < totalSlots; i++) {
-    ringsPool.push({ color: colors[i % colors.length] });
-  }
-
-  // Shuffle
-  for (let i = ringsPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [ringsPool[i], ringsPool[j]] = [ringsPool[j], ringsPool[i]];
-  }
-
-  const state: Ring[][] = Array.from({ length: config.pegs }, () => []);
-  let idx = 0;
-  for (let p = 0; p < config.pegs; p++) {
-    if (p >= config.pegs - 2) continue;
-    for (let h = 0; h < config.height; h++) {
-      state[p].push(ringsPool[idx++]);
-    }
-  }
-
-  return state;
-}
-
-function canMove(state: Ring[][], from: number, to: number, maxHeight: number): boolean {
-  const source = state[from];
-  const target = state[to];
-  if (!source.length) return false;
-
-  const topColor = source[source.length - 1].color;
-  let blockSize = 1;
-  for (let i = source.length - 2; i >= 0; i--) {
-    if (source[i].color === topColor) blockSize++;
-    else break;
-  }
-
-  if (target.length > 0) {
-    const targetTopColor = target[target.length - 1].color;
-    if (targetTopColor !== topColor) return false;
-  }
-  if (target.length + blockSize > maxHeight) return false;
-
-  return true;
-}
-
-function tryMove(state: Ring[][], from: number, to: number, maxHeight: number): Ring[][] | null {
-  const newState = deepCopyState(state);
-  const source = newState[from];
-  const target = newState[to];
-  if (!source.length) return null;
-
-  const topColor = source[source.length - 1].color;
-  let blockSize = 1;
-  for (let i = source.length - 2; i >= 0; i--) {
-    if (source[i].color === topColor) blockSize++;
-    else break;
-  }
-
-  if (target.length > 0) {
-    const targetTopColor = target[target.length - 1].color;
-    if (targetTopColor !== topColor) return null;
-  }
-  if (target.length + blockSize > maxHeight) return null;
-
-  const moving = source.splice(source.length - blockSize, blockSize);
-  newState[to].push(...moving);
-  return newState;
-}
-
-function checkWin(state: Ring[][], numPegs: number, maxHeight: number, colors: string[]): boolean {
-  const colorCounts: Record<string, number> = {};
-  const pegsPerColor = (numPegs - 2) / colors.length;
-
-  for (const peg of state) {
-    if (!peg.length) continue;
-    if (peg.length !== maxHeight) return false;
-
-    const pegColor = peg[0].color;
-    if (!peg.every(r => r.color === pegColor)) return false;
-
-    colorCounts[pegColor] = (colorCounts[pegColor] || 0) + 1;
-  }
-
-  for (const color of colors) {
-    if (colorCounts[color] !== pegsPerColor) return false;
-  }
-  return true;
-}
-
-function isDeadlocked(state: Ring[][], maxHeight: number): boolean {
-  for (let from = 0; from < state.length; from++) {
-    for (let to = 0; to < state.length; to++) {
-      if (from === to) continue;
-      if (canMove(state, from, to, maxHeight)) return false;
-    }
-  }
-  return true;
-}
-
-function findHint(state: Ring[][], maxHeight: number): { from: number; to: number } | null {
-  for (let from = 0; from < state.length; from++) {
-    for (let to = 0; to < state.length; to++) {
-      if (from === to) continue;
-      if (canMove(state, from, to, maxHeight)) return { from, to };
-    }
-  }
-  return null;
-}
-
 // Main Component
 export default function SortingGame({ onBack }: SortingGameProps) {
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('extreme');
-  const [state, setState] = useState<Ring[][]>([]);
+  const [game, setGame] = useState(() => new SortingGameLogic(difficulty));
   const [selectedPeg, setSelectedPeg] = useState<number | null>(null);
-  const [history, setHistory] = useState<Ring[][][]>([]);
   const [message, setMessage] = useState('Нажми на столбик, потом на другой, чтобы перенести кольца.');
   const [modalText, setModalText] = useState<string | null>(null);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [invalidPeg, setInvalidPeg] = useState<number | null>(null);
+  const [, forceUpdate] = useState({});
 
-  const config = DIFFICULTY_LEVELS[difficulty];
-  const colors = ALL_COLORS.slice(0, config.colors);
-
-  const initGame = useCallback(() => {
-    const newState = createInitialState(config, colors);
-    setState(newState);
-    setSelectedPeg(null);
-    setHistory([]);
-    setMessage('Нажми на столбик, потом на другой, чтобы перенести кольца.');
-  }, [config, colors]);
-
+  // Create new game when difficulty changes
   useEffect(() => {
-    initGame();
+    setGame(new SortingGameLogic(difficulty));
+    setSelectedPeg(null);
+    setMessage('Нажми на столбик, потом на другой, чтобы перенести кольца.');
   }, [difficulty]);
+
+  const triggerUpdate = useCallback(() => {
+    forceUpdate({});
+  }, []);
 
   const blinkInvalid = (index: number) => {
     setInvalidPeg(index);
     setTimeout(() => setInvalidPeg(null), 200);
   };
 
+  const handleMoveResult = (result: MoveResult) => {
+    switch (result) {
+      case 'win':
+        setMessage('Победа! Все башни аккуратно отсортированы.');
+        setModalText('Победа! Отличная сортировка!');
+        break;
+      case 'deadlock':
+        setMessage('Похоже, дедлок: ни одного доступного хода.');
+        setModalText('Дедлок! Больше нет допустимых ходов.');
+        break;
+      case 'ok':
+        setMessage('Ход сделан.');
+        break;
+    }
+  };
+
   const handlePegTap = (index: number) => {
     if (selectedPeg === null) {
-      if (state[index].length === 0) {
+      if (!game.hasPeg(index)) {
         blinkInvalid(index);
         return;
       }
@@ -460,51 +322,40 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     } else if (selectedPeg === index) {
       setSelectedPeg(null);
     } else {
-      const from = selectedPeg;
-      const to = index;
-      const newState = tryMove(state, from, to, config.height);
+      const result = game.move(selectedPeg, index);
       setSelectedPeg(null);
 
-      if (newState) {
-        setHistory(prev => {
-          const newHistory = [...prev, deepCopyState(state)];
-          if (newHistory.length > 200) newHistory.shift();
-          return newHistory;
-        });
-        setState(newState);
-
-        if (checkWin(newState, config.pegs, config.height, colors)) {
-          setMessage('Победа! Все башни аккуратно отсортированы.');
-          setModalText('Победа! Отличная сортировка!');
-        } else if (isDeadlocked(newState, config.height)) {
-          setMessage('Похоже, дедлок: ни одного доступного хода.');
-          setModalText('Дедлок! Больше нет допустимых ходов.');
-        } else {
-          setMessage('Ход сделан.');
-        }
+      if (result === 'invalid') {
+        blinkInvalid(index);
       } else {
-        blinkInvalid(to);
+        triggerUpdate();
+        handleMoveResult(result);
       }
     }
   };
 
   const handleUndo = () => {
-    if (!history.length) return;
-    const newHistory = [...history];
-    const prevState = newHistory.pop()!;
-    setHistory(newHistory);
-    setState(prevState);
-    setSelectedPeg(null);
-    setMessage('Ход отменён.');
+    if (game.undo()) {
+      triggerUpdate();
+      setSelectedPeg(null);
+      setMessage('Ход отменён.');
+    }
   };
 
   const handleHint = () => {
-    const hint = findHint(state, config.height);
+    const hint = game.getHint();
     if (!hint) {
       setModalText('Подсказок нет — ходов больше нет!');
     } else {
       setModalText(`Попробуй переместить со столбика ${hint.from + 1} на столбик ${hint.to + 1}`);
     }
+  };
+
+  const handleReset = () => {
+    game.reset();
+    triggerUpdate();
+    setSelectedPeg(null);
+    setMessage('Нажми на столбик, потом на другой, чтобы перенести кольца.');
   };
 
   const handleDifficultySelect = (level: DifficultyLevel) => {
@@ -520,12 +371,12 @@ export default function SortingGame({ onBack }: SortingGameProps) {
         <HeaderButton onClick={() => setShowDifficultyModal(true)}>⚙️ Сложность</HeaderButton>
         <HeaderButton onClick={handleHint}>💡 Подсказка</HeaderButton>
         <HeaderButton onClick={handleUndo}>↶ Отменить</HeaderButton>
-        <HeaderButton onClick={initGame}>⟲ Перезапуск</HeaderButton>
+        <HeaderButton onClick={handleReset}>⟲ Перезапуск</HeaderButton>
       </Header>
 
       <GameArea>
-        <PegsContainer $maxHeight={config.height}>
-          {state.map((peg, pegIndex) => (
+        <PegsContainer $maxHeight={game.config.height}>
+          {game.state.map((peg, pegIndex) => (
             <Peg
               key={pegIndex}
               $selected={selectedPeg === pegIndex}
