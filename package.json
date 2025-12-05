@@ -10,6 +10,8 @@
     "build": "tsc -p tsconfig.node.json && vite build",
     "start": "npm run build && electron .",
     "preview": "vite preview",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },

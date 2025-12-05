@@ -1,0 +1,18 @@
+services:
+  sorting-game:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sorting-game.rule=Host(`game.example.com`)"
+      - "traefik.http.routers.sorting-game.entrypoints=websecure"
+      - "traefik.http.routers.sorting-game.tls.certresolver=le"
+      - "traefik.http.services.sorting-game.loadbalancer.server.port=80"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true
