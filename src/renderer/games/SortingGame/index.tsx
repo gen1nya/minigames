@@ -785,7 +785,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     if (game.historyLength > 0) {
       setShowResetConfirm(true);
     } else {
-      doReset();
+      doReset(true);
     }
   };
 
@@ -986,9 +986,10 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <ModalTitle>🔒 Тупик!</ModalTitle>
             <ModalText>Ходов больше нет. Попробуй снова!</ModalText>
             <ModalButtons>
-              <ModalButtonPrimary onClick={() => doReset()}>Заново</ModalButtonPrimary>
-              <ModalButtonSecondary onClick={() => { setShowDeadlockModal(false); handleUndo(); }}>Отменить ход</ModalButtonSecondary>
+              <ModalButtonPrimary onClick={() => doReset(false)}>Та же раскладка</ModalButtonPrimary>
+              <ModalButtonDanger onClick={() => doReset(true)}>Новая раскладка</ModalButtonDanger>
             </ModalButtons>
+            <CancelButton onClick={() => { setShowDeadlockModal(false); handleUndo(); }}>Отменить ход</CancelButton>
           </ModalContent>
         </ModalOverlay>
       )}
