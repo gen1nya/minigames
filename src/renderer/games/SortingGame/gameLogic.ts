@@ -42,6 +42,21 @@ export const DIFFICULTY_LABELS: Record<DifficultyLevel, { label: string; color: 
   insane: { label: 'Безумие (14 столбцов, 6 цветов × 2)', color: '#212121' },
 };
 
+// Seeded PRNG (mulberry32) - fast and good distribution
+export function mulberry32(seed: number): () => number {
+  return () => {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Generate a random seed
+export function generateSeed(): number {
+  return Math.floor(Math.random() * 2147483647);
+}
+
 // Utility functions (kept for testing)
 export function shuffleArray<T>(array: T[], random = Math.random): T[] {
   const result = [...array];
@@ -72,16 +87,24 @@ export class SortingGameLogic {
   private readonly _colors: string[];
   private readonly _maxHistorySize = 200;
   private _nextRingId = 0;
+  private _seed: number;
+  private _random: () => number;
 
   constructor(
     difficulty: DifficultyLevel,
-    private readonly _random = Math.random
+    seed?: number
   ) {
     this._config = DIFFICULTY_LEVELS[difficulty];
     this._colors = ALL_COLORS.slice(0, this._config.colors);
+    this._seed = seed ?? generateSeed();
+    this._random = mulberry32(this._seed);
     this._state = [];
     this._history = [];
     this.reset();
+  }
+
+  get seed(): number {
+    return this._seed;
   }
 
   private generateRingId(): string {
@@ -111,8 +134,17 @@ export class SortingGameLogic {
 
   // Reset game to initial state
   reset(): void {
+    // Recreate PRNG with same seed to get same initial state
+    this._random = mulberry32(this._seed);
+    this._nextRingId = 0;
     this._state = this.createInitialState();
     this._history = [];
+  }
+
+  // Reset with a new seed
+  resetWithSeed(seed: number): void {
+    this._seed = seed;
+    this.reset();
   }
 
   // Check if a move is valid

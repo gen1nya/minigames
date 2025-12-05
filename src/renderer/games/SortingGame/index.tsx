@@ -9,6 +9,7 @@ import {
   MoveResult,
   Ring,
   getTopBlockSize,
+  generateSeed,
 } from './gameLogic';
 
 interface SortingGameProps {
@@ -59,33 +60,83 @@ const GameContainer = styled.div`
 `;
 
 const Header = styled.header`
-  padding: 10px 12px 4px;
-  font-size: 14px;
+  padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 12px;
 `;
 
-const Message = styled.div`
-  font-size: 13px;
-  flex: 1;
-  min-width: 200px;
+const HeaderLeft = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+`;
+
+const HeaderCenter = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+`;
+
+const HeaderRight = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+`;
+
+const MoveCounter = styled.div`
+  font-size: 18px;
+  font-weight: bold;
+  color: #5d4037;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 6px 14px;
+  border-radius: 20px;
+  min-width: 80px;
+  text-align: center;
 `;
 
 const HeaderButton = styled.button`
-  padding: 6px 10px;
-  border-radius: 999px;
+  padding: 8px 14px;
+  border-radius: 12px;
   border: none;
-  background: #444;
+  background: linear-gradient(180deg, #6d5d4e 0%, #5d4d3e 100%);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.1s, box-shadow 0.1s;
+
+  &:hover {
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+  }
 
   &:active {
     transform: scale(0.96);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
   }
+`;
+
+const HintButton = styled(HeaderButton)`
+  background: linear-gradient(180deg, #ffc107 0%, #ff9800 100%);
+  color: #333;
+`;
+
+const UndoButton = styled(HeaderButton)`
+  background: linear-gradient(180deg, #78909c 0%, #607d8b 100%);
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+`;
+
+const ResetButton = styled(HeaderButton)`
+  background: linear-gradient(180deg, #ef5350 0%, #d32f2f 100%);
+`;
+
+const SettingsButton = styled(HeaderButton)`
+  background: linear-gradient(180deg, #7e57c2 0%, #5e35b1 100%);
 `;
 
 const GameArea = styled.div`
@@ -253,42 +304,79 @@ const ModalOverlay = styled(motion.div)`
 `;
 
 const ModalContent = styled(motion.div)`
-  background: #fff;
-  padding: 20px 30px;
-  border-radius: 12px;
-  max-width: 300px;
+  background: linear-gradient(180deg, #fff9e6 0%, #ffe4b5 100%);
+  padding: 24px 32px;
+  border-radius: 16px;
+  max-width: 320px;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 3px solid #d4a574;
+`;
+
+const ModalTitle = styled.div`
+  font-size: 24px;
+  font-weight: bold;
+  color: #5d4037;
+  margin-bottom: 8px;
 `;
 
 const ModalText = styled.div`
   margin-bottom: 20px;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 16px;
+  color: #6d5d4e;
+`;
+
+const ModalButtons = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
 `;
 
 const ModalButton = styled.button`
-  padding: 8px 14px;
+  padding: 10px 18px;
   border: none;
-  border-radius: 8px;
-  background: #444;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #6d5d4e 0%, #5d4d3e 100%);
   color: #fff;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.1s;
+
+  &:active {
+    transform: scale(0.96);
+  }
+`;
+
+const ModalButtonPrimary = styled(ModalButton)`
+  background: linear-gradient(180deg, #66bb6a 0%, #43a047 100%);
+`;
+
+const ModalButtonDanger = styled(ModalButton)`
+  background: linear-gradient(180deg, #ef5350 0%, #d32f2f 100%);
+`;
+
+const ModalButtonSecondary = styled(ModalButton)`
+  background: linear-gradient(180deg, #90a4ae 0%, #78909c 100%);
 `;
 
 const DifficultyModalContent = styled(motion.div)`
-  background: #fff;
-  padding: 30px;
-  border-radius: 12px;
-  max-width: 400px;
+  background: linear-gradient(180deg, #fff9e6 0%, #ffe4b5 100%);
+  padding: 28px 32px;
+  border-radius: 16px;
+  max-width: 380px;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 3px solid #d4a574;
 `;
 
 const DifficultyTitle = styled.div`
-  margin-bottom: 24px;
-  font-size: 20px;
-  font-weight: 600;
+  margin-bottom: 20px;
+  font-size: 22px;
+  font-weight: bold;
+  color: #5d4037;
 `;
 
 const DifficultyButtons = styled.div`
@@ -318,14 +406,88 @@ const DifficultyButton = styled.button<{ $color: string }>`
   }
 `;
 
-const CancelButton = styled.button`
+const CancelButton = styled(ModalButtonSecondary)`
   margin-top: 16px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 8px;
-  background: #999;
-  color: #fff;
+`;
+
+const SeedContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #5d4037;
   cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+`;
+
+const SeedLabel = styled.span`
+  font-weight: 500;
+  opacity: 0.7;
+`;
+
+const SeedValue = styled.span`
+  font-family: monospace;
+  font-weight: bold;
+`;
+
+const CopyIcon = styled.span`
+  opacity: 0.6;
+  font-size: 14px;
+`;
+
+const SeedModalContent = styled(motion.div)`
+  background: linear-gradient(180deg, #fff9e6 0%, #ffe4b5 100%);
+  padding: 24px 32px;
+  border-radius: 16px;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 3px solid #d4a574;
+`;
+
+const SeedInput = styled.input`
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #d4a574;
+  border-radius: 8px;
+  font-size: 18px;
+  font-family: monospace;
+  text-align: center;
+  background: #fff;
+  color: #333;
+  margin: 16px 0;
+
+  &:focus {
+    outline: none;
+    border-color: #5d4037;
+  }
+`;
+
+const SeedModalButtons = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+`;
+
+const CopiedToast = styled(motion.div)`
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 10000;
 `;
 
 // Animation variants
@@ -344,9 +506,14 @@ export default function SortingGame({ onBack }: SortingGameProps) {
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('extreme');
   const [game, setGame] = useState(() => new SortingGameLogic(difficulty));
   const [selectedPeg, setSelectedPeg] = useState<number | null>(null);
-  const [message, setMessage] = useState('Нажми на столбик, потом на другой, чтобы перенести кольца.');
-  const [modalText, setModalText] = useState<string | null>(null);
+  const [hintText, setHintText] = useState<string | null>(null);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [showDeadlockModal, setShowDeadlockModal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showSeedModal, setShowSeedModal] = useState(false);
+  const [seedInput, setSeedInput] = useState('');
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [invalidPeg, setInvalidPeg] = useState<number | null>(null);
   const [animations, setAnimations] = useState<AnimationState[]>([]);
   const [hiddenRingIds, setHiddenRingIds] = useState<Set<string>>(new Set());
@@ -361,7 +528,8 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     setSelectedPeg(null);
     setAnimations([]);
     setHiddenRingIds(new Set());
-    setMessage('Нажми на столбик, потом на другой, чтобы перенести кольца.');
+    setShowWinModal(false);
+    setShowDeadlockModal(false);
   }, [difficulty]);
 
   const triggerUpdate = useCallback(() => {
@@ -376,15 +544,10 @@ export default function SortingGame({ onBack }: SortingGameProps) {
   const handleMoveResult = (result: MoveResult) => {
     switch (result) {
       case 'win':
-        setMessage('Победа! Все башни аккуратно отсортированы.');
-        setModalText('Победа! Отличная сортировка!');
+        setShowWinModal(true);
         break;
       case 'deadlock':
-        setMessage('Похоже, дедлок: ни одного доступного хода.');
-        setModalText('Дедлок! Больше нет допустимых ходов.');
-        break;
-      case 'ok':
-        setMessage('Ход сделан.');
+        setShowDeadlockModal(true);
         break;
     }
   };
@@ -526,26 +689,39 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     if (game.undo()) {
       triggerUpdate();
       setSelectedPeg(null);
-      setMessage('Ход отменён.');
     }
   };
 
   const handleHint = () => {
     const hint = game.getHint();
     if (!hint) {
-      setModalText('Подсказок нет — ходов больше нет!');
+      setHintText('Ходов больше нет!');
     } else {
-      setModalText(`Попробуй переместить со столбика ${hint.from + 1} на столбик ${hint.to + 1}`);
+      setHintText(`${hint.from + 1} → ${hint.to + 1}`);
     }
   };
 
-  const handleReset = () => {
-    game.reset();
+  const handleResetClick = () => {
+    if (game.historyLength > 0) {
+      setShowResetConfirm(true);
+    } else {
+      doReset();
+    }
+  };
+
+  const doReset = (newSeed = false) => {
+    if (newSeed) {
+      game.resetWithSeed(generateSeed());
+    } else {
+      game.reset();
+    }
     triggerUpdate();
     setSelectedPeg(null);
     setAnimations([]);
     setHiddenRingIds(new Set());
-    setMessage('Нажми на столбик, потом на другой, чтобы перенести кольца.');
+    setShowWinModal(false);
+    setShowDeadlockModal(false);
+    setShowResetConfirm(false);
   };
 
   const handleDifficultySelect = (level: DifficultyLevel) => {
@@ -553,16 +729,69 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     setShowDifficultyModal(false);
   };
 
+  const handleCopySeed = async () => {
+    try {
+      await navigator.clipboard.writeText(game.seed.toString());
+      setShowCopiedToast(true);
+      setTimeout(() => setShowCopiedToast(false), 2000);
+    } catch {
+      // Fallback for environments without clipboard API
+      setShowSeedModal(true);
+      setSeedInput(game.seed.toString());
+    }
+  };
+
+  const handleSeedClick = () => {
+    setSeedInput(game.seed.toString());
+    setShowSeedModal(true);
+  };
+
+  const handleApplySeed = () => {
+    const newSeed = parseInt(seedInput, 10);
+    if (!isNaN(newSeed) && newSeed > 0) {
+      game.resetWithSeed(newSeed);
+      triggerUpdate();
+      setSelectedPeg(null);
+      setAnimations([]);
+      setHiddenRingIds(new Set());
+      setShowWinModal(false);
+      setShowDeadlockModal(false);
+      setShowSeedModal(false);
+    }
+  };
+
+  const handleNewSeed = () => {
+    const newSeed = generateSeed();
+    game.resetWithSeed(newSeed);
+    triggerUpdate();
+    setSelectedPeg(null);
+    setAnimations([]);
+    setHiddenRingIds(new Set());
+    setShowWinModal(false);
+    setShowDeadlockModal(false);
+    setShowSeedModal(false);
+  };
 
   return (
     <GameContainer>
       <Header>
-        <HeaderButton onClick={onBack}>← Назад</HeaderButton>
-        <Message>{message}</Message>
-        <HeaderButton onClick={() => setShowDifficultyModal(true)}>⚙️ Сложность</HeaderButton>
-        <HeaderButton onClick={handleHint}>💡 Подсказка</HeaderButton>
-        <HeaderButton onClick={handleUndo}>↶ Отменить</HeaderButton>
-        <HeaderButton onClick={handleReset}>⟲ Перезапуск</HeaderButton>
+        <HeaderLeft>
+          <HeaderButton onClick={onBack}>← Назад</HeaderButton>
+          <SettingsButton onClick={() => setShowDifficultyModal(true)}>⚙️</SettingsButton>
+        </HeaderLeft>
+        <HeaderCenter>
+          <MoveCounter>Ходов: {game.historyLength}</MoveCounter>
+          <SeedContainer onClick={handleSeedClick} title="Нажмите для ввода seed">
+            <SeedLabel>Seed:</SeedLabel>
+            <SeedValue>{game.seed}</SeedValue>
+            <CopyIcon onClick={(e) => { e.stopPropagation(); handleCopySeed(); }}>📋</CopyIcon>
+          </SeedContainer>
+        </HeaderCenter>
+        <HeaderRight>
+          <HintButton onClick={handleHint}>💡</HintButton>
+          <UndoButton onClick={handleUndo} disabled={!game.canUndo}>↩</UndoButton>
+          <ResetButton onClick={handleResetClick}>⟲</ResetButton>
+        </HeaderRight>
       </Header>
 
       <GameArea>
@@ -635,14 +864,13 @@ export default function SortingGame({ onBack }: SortingGameProps) {
         </AnimatePresence>
       </FlyingRingsLayer>
 
-      {/* Info Modal */}
-      {modalText !== null && (
+      {/* Win Modal */}
+      {showWinModal && (
         <ModalOverlay
           initial="hidden"
           animate="visible"
           exit="hidden"
           variants={modalOverlayVariants}
-          onClick={() => setModalText(null)}
         >
           <ModalContent
             variants={modalContentVariants}
@@ -650,8 +878,84 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             animate="visible"
             onClick={e => e.stopPropagation()}
           >
-            <ModalText>{modalText}</ModalText>
-            <ModalButton onClick={() => setModalText(null)}>OK</ModalButton>
+            <ModalTitle>🎉 Победа!</ModalTitle>
+            <ModalText>Отлично! Решено за {game.historyLength} ходов</ModalText>
+            <ModalButtons>
+              <ModalButtonPrimary onClick={doReset}>Ещё раз</ModalButtonPrimary>
+              <ModalButtonSecondary onClick={onBack}>В меню</ModalButtonSecondary>
+            </ModalButtons>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Deadlock Modal */}
+      {showDeadlockModal && (
+        <ModalOverlay
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={modalOverlayVariants}
+        >
+          <ModalContent
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            onClick={e => e.stopPropagation()}
+          >
+            <ModalTitle>🔒 Тупик!</ModalTitle>
+            <ModalText>Ходов больше нет. Попробуй снова!</ModalText>
+            <ModalButtons>
+              <ModalButtonPrimary onClick={doReset}>Заново</ModalButtonPrimary>
+              <ModalButtonSecondary onClick={() => { setShowDeadlockModal(false); handleUndo(); }}>Отменить ход</ModalButtonSecondary>
+            </ModalButtons>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <ModalOverlay
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={modalOverlayVariants}
+          onClick={() => setShowResetConfirm(false)}
+        >
+          <ModalContent
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            onClick={e => e.stopPropagation()}
+          >
+            <ModalTitle>Начать заново?</ModalTitle>
+            <ModalText>Прогресс ({game.historyLength} ходов) будет потерян</ModalText>
+            <ModalButtons>
+              <ModalButtonPrimary onClick={() => doReset(false)}>Та же раскладка</ModalButtonPrimary>
+              <ModalButtonDanger onClick={() => doReset(true)}>Новая раскладка</ModalButtonDanger>
+            </ModalButtons>
+            <CancelButton onClick={() => setShowResetConfirm(false)}>Отмена</CancelButton>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Hint Modal */}
+      {hintText !== null && (
+        <ModalOverlay
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={modalOverlayVariants}
+          onClick={() => setHintText(null)}
+        >
+          <ModalContent
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            onClick={e => e.stopPropagation()}
+          >
+            <ModalTitle>💡 Подсказка</ModalTitle>
+            <ModalText>{hintText}</ModalText>
+            <ModalButton onClick={() => setHintText(null)}>OK</ModalButton>
           </ModalContent>
         </ModalOverlay>
       )}
@@ -687,6 +991,53 @@ export default function SortingGame({ onBack }: SortingGameProps) {
           </DifficultyModalContent>
         </ModalOverlay>
       )}
+
+      {/* Seed Modal */}
+      {showSeedModal && (
+        <ModalOverlay
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={modalOverlayVariants}
+          onClick={() => setShowSeedModal(false)}
+        >
+          <SeedModalContent
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            onClick={e => e.stopPropagation()}
+          >
+            <ModalTitle>Seed раскладки</ModalTitle>
+            <ModalText>Введите seed для воспроизведения конкретной раскладки</ModalText>
+            <SeedInput
+              type="text"
+              value={seedInput}
+              onChange={e => setSeedInput(e.target.value.replace(/\D/g, ''))}
+              placeholder="Введите число"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleApplySeed()}
+            />
+            <SeedModalButtons>
+              <ModalButtonPrimary onClick={handleApplySeed}>Применить</ModalButtonPrimary>
+              <ModalButton onClick={handleNewSeed}>Новый seed</ModalButton>
+              <ModalButtonSecondary onClick={() => setShowSeedModal(false)}>Отмена</ModalButtonSecondary>
+            </SeedModalButtons>
+          </SeedModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Copied Toast */}
+      <AnimatePresence>
+        {showCopiedToast && (
+          <CopiedToast
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+          >
+            Seed скопирован!
+          </CopiedToast>
+        )}
+      </AnimatePresence>
     </GameContainer>
   );
 }
