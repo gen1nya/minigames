@@ -49,6 +49,44 @@ const lift = keyframes`
 
 // Styled Components
 const GameContainer = styled.div`
+  --ring-height: 24px;
+  --ring-width: 46px;
+  --ring-radius: 12px;
+  --peg-width: 60px;
+  --peg-rod-width: 12px;
+  --peg-gap: 10px;
+  --peg-top-padding: 20px;
+
+  @media (max-width: 700px) {
+    --ring-height: 18px;
+    --ring-width: 36px;
+    --ring-radius: 10px;
+    --peg-width: 46px;
+    --peg-rod-width: 10px;
+    --peg-gap: 4px;
+    --peg-top-padding: 24px;
+  }
+
+  @media (max-width: 500px) {
+    --ring-height: 14px;
+    --ring-width: 28px;
+    --ring-radius: 8px;
+    --peg-width: 36px;
+    --peg-rod-width: 8px;
+    --peg-gap: 2px;
+    --peg-top-padding: 28px;
+  }
+
+  @media (max-width: 380px) {
+    --ring-height: 12px;
+    --ring-width: 24px;
+    --ring-radius: 6px;
+    --peg-width: 30px;
+    --peg-rod-width: 6px;
+    --peg-gap: 1px;
+    --peg-top-padding: 24px;
+  }
+
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -64,7 +102,13 @@ const Header = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  @media (max-width: 500px) {
+    padding: 8px 10px;
+    gap: 6px;
+  }
 `;
 
 const HeaderLeft = styled.div`
@@ -94,6 +138,18 @@ const MoveCounter = styled.div`
   border-radius: 20px;
   min-width: 80px;
   text-align: center;
+
+  @media (max-width: 500px) {
+    font-size: 14px;
+    padding: 4px 10px;
+    min-width: 60px;
+  }
+
+  @media (max-width: 380px) {
+    font-size: 12px;
+    padding: 3px 8px;
+    min-width: auto;
+  }
 `;
 
 const HeaderButton = styled.button`
@@ -106,6 +162,7 @@ const HeaderButton = styled.button`
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   transition: transform 0.1s, box-shadow 0.1s;
+  white-space: nowrap;
 
   &:hover {
     box-shadow: 0 3px 6px rgba(0,0,0,0.3);
@@ -114,6 +171,17 @@ const HeaderButton = styled.button`
   &:active {
     transform: scale(0.96);
     box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+
+  @media (max-width: 500px) {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 10px;
+  }
+
+  @media (max-width: 380px) {
+    padding: 5px 8px;
+    font-size: 11px;
   }
 `;
 
@@ -148,9 +216,6 @@ const GameArea = styled.div`
 `;
 
 const PegsContainer = styled.div<{ $maxHeight: number }>`
-  --ring-height: 24px;
-  --peg-width: 60px;
-  --peg-gap: 10px;
   --max-height: ${props => props.$maxHeight};
 
   display: flex;
@@ -158,24 +223,13 @@ const PegsContainer = styled.div<{ $maxHeight: number }>`
   align-items: flex-end;
   justify-content: center;
   max-width: 100%;
-
-  @media (max-width: 700px) {
-    --ring-height: 18px;
-    --peg-width: 36px;
-    --peg-gap: 4px;
-  }
-
-  @media (max-width: 500px) {
-    --ring-height: 14px;
-    --peg-width: 28px;
-    --peg-gap: 2px;
-  }
 `;
 
 const Peg = styled.div<{ $selected: boolean; $invalid: boolean }>`
   position: relative;
   width: var(--peg-width);
-  height: calc(var(--ring-height) * (var(--max-height) + 2));
+  /* Height = rings + gaps between them + top padding */
+  height: calc((var(--ring-height) + 2px) * var(--max-height) + var(--peg-top-padding));
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
@@ -202,7 +256,7 @@ const PegRod = styled.div<{ $selected: boolean; $invalid: boolean }>`
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  width: 12px;
+  width: var(--peg-rod-width);
   height: calc(100% - 28px);
   background: #c0c0c0;
   border-radius: 999px;
@@ -239,9 +293,11 @@ const PegInner = styled.div`
 `;
 
 const RingElement = styled.div<{ $color: string; $inSelectedGroup: boolean; $hidden?: boolean }>`
-  width: 46px;
+  width: var(--ring-width);
   height: var(--ring-height);
-  border-radius: 12px;
+  min-height: var(--ring-height);
+  flex-shrink: 0;
+  border-radius: var(--ring-radius);
   background: ${props => props.$color};
   box-shadow: ${props => {
     const baseShadow = props.$color === '#e5e5e5'
@@ -266,9 +322,9 @@ const RingElement = styled.div<{ $color: string; $inSelectedGroup: boolean; $hid
 
 const FlyingRingElement = styled(motion.div)<{ $color: string }>`
   position: fixed;
-  width: 46px;
-  height: 24px;
-  border-radius: 12px;
+  width: var(--ring-width);
+  height: var(--ring-height);
+  border-radius: var(--ring-radius);
   background: ${props => props.$color};
   box-shadow: ${props =>
     props.$color === '#e5e5e5'
@@ -276,14 +332,6 @@ const FlyingRingElement = styled(motion.div)<{ $color: string }>`
       : '0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.35)'};
   z-index: 1000;
   pointer-events: none;
-
-  @media (max-width: 700px) {
-    height: 18px;
-  }
-
-  @media (max-width: 500px) {
-    height: 14px;
-  }
 `;
 
 const FlyingRingsLayer = styled.div`
@@ -425,6 +473,16 @@ const SeedContainer = styled.div`
   &:hover {
     background: rgba(255, 255, 255, 0.5);
   }
+
+  @media (max-width: 500px) {
+    font-size: 10px;
+    padding: 3px 8px;
+    gap: 4px;
+  }
+
+  @media (max-width: 380px) {
+    display: none;
+  }
 `;
 
 const SeedLabel = styled.span`
@@ -562,10 +620,11 @@ export default function SortingGame({ onBack }: SortingGameProps) {
 
     const computedStyle = getComputedStyle(pegEl);
     const ringHeight = parseFloat(computedStyle.getPropertyValue('--ring-height')) || 24;
+    const ringWidth = parseFloat(computedStyle.getPropertyValue('--ring-width')) || 46;
     const gap = 2;
 
     const innerRect = pegInner.getBoundingClientRect();
-    const centerX = pegRect.left + pegRect.width / 2 - 23; // 23 = half of ring width
+    const centerX = pegRect.left + pegRect.width / 2 - ringWidth / 2;
     const bottomY = innerRect.bottom;
     const topY = innerRect.top;
 
@@ -881,7 +940,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <ModalTitle>🎉 Победа!</ModalTitle>
             <ModalText>Отлично! Решено за {game.historyLength} ходов</ModalText>
             <ModalButtons>
-              <ModalButtonPrimary onClick={doReset}>Ещё раз</ModalButtonPrimary>
+              <ModalButtonPrimary onClick={() => doReset()}>Ещё раз</ModalButtonPrimary>
               <ModalButtonSecondary onClick={onBack}>В меню</ModalButtonSecondary>
             </ModalButtons>
           </ModalContent>
@@ -905,7 +964,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <ModalTitle>🔒 Тупик!</ModalTitle>
             <ModalText>Ходов больше нет. Попробуй снова!</ModalText>
             <ModalButtons>
-              <ModalButtonPrimary onClick={doReset}>Заново</ModalButtonPrimary>
+              <ModalButtonPrimary onClick={() => doReset()}>Заново</ModalButtonPrimary>
               <ModalButtonSecondary onClick={() => { setShowDeadlockModal(false); handleUndo(); }}>Отменить ход</ModalButtonSecondary>
             </ModalButtons>
           </ModalContent>
