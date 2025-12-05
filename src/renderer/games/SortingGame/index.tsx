@@ -292,6 +292,27 @@ const PegInner = styled.div`
   z-index: 1;
 `;
 
+const PegNumber = styled.div`
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: bold;
+  color: #5d4037;
+  opacity: 0.7;
+
+  @media (max-width: 500px) {
+    font-size: 12px;
+    bottom: -16px;
+  }
+
+  @media (max-width: 380px) {
+    font-size: 10px;
+    bottom: -14px;
+  }
+`;
+
 const RingElement = styled.div<{ $color: string; $inSelectedGroup: boolean; $hidden?: boolean }>`
   width: var(--ring-width);
   height: var(--ring-height);
@@ -884,6 +905,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
                     );
                   })}
                 </PegInner>
+                <PegNumber>{pegIndex + 1}</PegNumber>
               </Peg>
             );
           })}
