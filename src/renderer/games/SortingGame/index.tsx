@@ -431,6 +431,10 @@ const ModalButtonSecondary = styled(ModalButton)`
   background: linear-gradient(180deg, #90a4ae 0%, #78909c 100%);
 `;
 
+const ShareButton = styled(ModalButton)`
+  background: linear-gradient(180deg, #29b6f6 0%, #0288d1 100%);
+`;
+
 const DifficultyModalContent = styled(motion.div)`
   background: linear-gradient(180deg, #fff9e6 0%, #ffe4b5 100%);
   padding: 28px 32px;
@@ -580,10 +584,35 @@ const modalContentVariants = {
   visible: { opacity: 1, scale: 1, y: 0 },
 };
 
+// Parse URL params for shared games
+const getInitialParams = (): { difficulty: DifficultyLevel; seed?: number } => {
+  if (typeof window === 'undefined') return { difficulty: 'extreme' };
+
+  const params = new URLSearchParams(window.location.search);
+  const seedParam = params.get('seed');
+  const diffParam = params.get('difficulty');
+
+  const difficulty: DifficultyLevel =
+    diffParam && diffParam in DIFFICULTY_LEVELS
+      ? (diffParam as DifficultyLevel)
+      : 'extreme';
+
+  const seed = seedParam ? parseInt(seedParam, 10) : undefined;
+
+  return { difficulty, seed: seed && !isNaN(seed) ? seed : undefined };
+};
+
 // Main Component
 export default function SortingGame({ onBack }: SortingGameProps) {
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('extreme');
-  const [game, setGame] = useState(() => new SortingGameLogic(difficulty));
+  const initialParams = getInitialParams();
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>(initialParams.difficulty);
+  const [game, setGame] = useState(() => {
+    const g = new SortingGameLogic(initialParams.difficulty);
+    if (initialParams.seed) {
+      g.resetWithSeed(initialParams.seed);
+    }
+    return g;
+  });
   const [selectedPeg, setSelectedPeg] = useState<number | null>(null);
   const [hintText, setHintText] = useState<string | null>(null);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
@@ -600,6 +629,58 @@ export default function SortingGame({ onBack }: SortingGameProps) {
   const animationIdRef = useRef(0);
 
   const pegRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Check if Web Share API is available (browser only, not Electron)
+  const canShare = typeof navigator !== 'undefined' &&
+    typeof navigator.share === 'function' &&
+    typeof window !== 'undefined' &&
+    !('electronAPI' in window);
+
+  const handleShare = async (type: 'win' | 'deadlock' | 'seed') => {
+    if (!canShare) return;
+
+    const difficultyLabel = DIFFICULTY_LABELS[difficulty].label;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?seed=${game.seed}&difficulty=${difficulty}`;
+
+    let title: string;
+    let text: string;
+
+    switch (type) {
+      case 'win':
+        title = 'SortingGame - Победа!';
+        text = `🎉 Я прошёл SortingGame (${difficultyLabel}) за ${game.historyLength} ходов!\n\nПопробуй побить мой результат:`;
+        break;
+      case 'deadlock':
+        title = 'SortingGame - Попробуй пройти!';
+        text = `🎯 Попробуй пройти этот уровень SortingGame (${difficultyLabel})!\n\nSeed: ${game.seed}`;
+        break;
+      case 'seed':
+        title = 'SortingGame - Раскладка';
+        text = `🎮 Сыграй в SortingGame с этой раскладкой!\n\nСложность: ${difficultyLabel}\nSeed: ${game.seed}`;
+        break;
+    }
+
+    try {
+      await navigator.share({
+        title,
+        text,
+        url: shareUrl,
+      });
+    } catch (err) {
+      // User cancelled or share failed silently
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Share failed:', err);
+      }
+    }
+  };
+
+  // Clear URL params after initial load (so they don't interfere with future changes)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Create new game when difficulty changes
   useEffect(() => {
@@ -963,6 +1044,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <ModalText>Отлично! Решено за {game.historyLength} ходов</ModalText>
             <ModalButtons>
               <ModalButtonPrimary onClick={() => doReset()}>Ещё раз</ModalButtonPrimary>
+              {canShare && <ShareButton onClick={() => handleShare('win')}>Поделиться</ShareButton>}
               <ModalButtonSecondary onClick={onBack}>В меню</ModalButtonSecondary>
             </ModalButtons>
           </ModalContent>
@@ -988,6 +1070,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <ModalButtons>
               <ModalButtonPrimary onClick={() => doReset(false)}>Та же раскладка</ModalButtonPrimary>
               <ModalButtonDanger onClick={() => doReset(true)}>Новая раскладка</ModalButtonDanger>
+              {canShare && <ShareButton onClick={() => handleShare('deadlock')}>Поделиться</ShareButton>}
             </ModalButtons>
             <CancelButton onClick={() => { setShowDeadlockModal(false); handleUndo(); }}>Отменить ход</CancelButton>
           </ModalContent>
@@ -1102,6 +1185,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <SeedModalButtons>
               <ModalButtonPrimary onClick={handleApplySeed}>Применить</ModalButtonPrimary>
               <ModalButton onClick={handleNewSeed}>Новый seed</ModalButton>
+              {canShare && <ShareButton onClick={() => handleShare('seed')}>Поделиться</ShareButton>}
               <ModalButtonSecondary onClick={() => setShowSeedModal(false)}>Отмена</ModalButtonSecondary>
             </SeedModalButtons>
           </SeedModalContent>
