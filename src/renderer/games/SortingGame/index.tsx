@@ -714,30 +714,23 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     const difficultyLabel = DIFFICULTY_LABELS[difficulty].label;
     const shareUrl = getShareUrl();
 
-    let title: string;
     let text: string;
 
     switch (type) {
       case 'win':
-        title = 'SortingGame - Победа!';
-        text = `🎉 Я прошёл SortingGame (${difficultyLabel}) за ${game.historyLength} ходов!\n\nПопробуй побить мой результат:`;
+        text = `🎉 Я прошёл SortingGame (${difficultyLabel}) за ${game.historyLength} ходов!\n\nПопробуй побить мой результат:\n${shareUrl}`;
         break;
       case 'deadlock':
-        title = 'SortingGame - Попробуй пройти!';
-        text = `🎯 Попробуй пройти этот уровень SortingGame (${difficultyLabel})!\n\nSeed: ${game.seed}`;
+        text = `🎯 Попробуй пройти этот уровень SortingGame (${difficultyLabel})!\n\n${shareUrl}`;
         break;
       case 'seed':
-        title = 'SortingGame - Раскладка';
-        text = `🎮 Сыграй в SortingGame с этой раскладкой!\n\nСложность: ${difficultyLabel}\nSeed: ${game.seed}`;
+        text = `🎮 Сыграй в SortingGame с этой раскладкой!\n\nСложность: ${difficultyLabel}\n${shareUrl}`;
         break;
     }
 
     try {
-      await navigator.share({
-        title,
-        text,
-        url: shareUrl,
-      });
+      // Use only 'text' - iOS ignores 'title' and 'url' in many apps
+      await navigator.share({ text });
     } catch (err) {
       // User cancelled or share failed silently
       if ((err as Error).name !== 'AbortError') {
