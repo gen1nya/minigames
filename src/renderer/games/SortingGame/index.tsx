@@ -431,7 +431,52 @@ const ModalButtonSecondary = styled(ModalButton)`
   background: linear-gradient(180deg, #90a4ae 0%, #78909c 100%);
 `;
 
-const ShareButton = styled(ModalButton)`
+const ShareButtonGroup = styled.div`
+  display: inline-flex;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+`;
+
+const ShareButton = styled.button`
+  padding: 10px 14px;
+  border: none;
+  background: linear-gradient(180deg, #29b6f6 0%, #0288d1 100%);
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: filter 0.1s;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+
+  &:active {
+    filter: brightness(0.95);
+  }
+`;
+
+const CopyLinkButton = styled.button`
+  padding: 10px 12px;
+  border: none;
+  border-left: 1px solid rgba(255,255,255,0.3);
+  background: linear-gradient(180deg, #29b6f6 0%, #0288d1 100%);
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: filter 0.1s;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+
+  &:active {
+    filter: brightness(0.95);
+  }
+`;
+
+const CopyOnlyButton = styled(ModalButton)`
   background: linear-gradient(180deg, #29b6f6 0%, #0288d1 100%);
 `;
 
@@ -629,6 +674,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
   const animationIdRef = useRef(0);
 
   const pegRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const isFirstRender = useRef(true);
 
   // Check if Web Share API is available (browser only, not Electron)
   const canShare = typeof navigator !== 'undefined' &&
@@ -636,12 +682,37 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     typeof window !== 'undefined' &&
     !('electronAPI' in window);
 
+  // Check if running in browser (not Electron)
+  const isBrowser = typeof window !== 'undefined' && !('electronAPI' in window);
+
+  const getShareUrl = () => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}?seed=${game.seed}&difficulty=${difficulty}`;
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl());
+      setShowCopiedToast(true);
+      setTimeout(() => setShowCopiedToast(false), 2000);
+    } catch {
+      // Fallback - select text in a temporary input
+      const input = document.createElement('input');
+      input.value = getShareUrl();
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setShowCopiedToast(true);
+      setTimeout(() => setShowCopiedToast(false), 2000);
+    }
+  };
+
   const handleShare = async (type: 'win' | 'deadlock' | 'seed') => {
     if (!canShare) return;
 
     const difficultyLabel = DIFFICULTY_LABELS[difficulty].label;
-    const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?seed=${game.seed}&difficulty=${difficulty}`;
+    const shareUrl = getShareUrl();
 
     let title: string;
     let text: string;
@@ -682,8 +753,12 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     }
   }, []);
 
-  // Create new game when difficulty changes
+  // Create new game when difficulty changes (skip first render to preserve URL seed)
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setGame(new SortingGameLogic(difficulty));
     setSelectedPeg(null);
     setAnimations([]);
@@ -1044,7 +1119,16 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <ModalText>Отлично! Решено за {game.historyLength} ходов</ModalText>
             <ModalButtons>
               <ModalButtonPrimary onClick={() => doReset()}>Ещё раз</ModalButtonPrimary>
-              {canShare && <ShareButton onClick={() => handleShare('win')}>Поделиться</ShareButton>}
+              {isBrowser && (
+                canShare ? (
+                  <ShareButtonGroup>
+                    <ShareButton onClick={() => handleShare('win')}>Поделиться</ShareButton>
+                    <CopyLinkButton onClick={handleCopyLink} title="Скопировать ссылку">📋</CopyLinkButton>
+                  </ShareButtonGroup>
+                ) : (
+                  <CopyOnlyButton onClick={handleCopyLink}>📋 Скопировать</CopyOnlyButton>
+                )
+              )}
               <ModalButtonSecondary onClick={onBack}>В меню</ModalButtonSecondary>
             </ModalButtons>
           </ModalContent>
@@ -1070,7 +1154,16 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <ModalButtons>
               <ModalButtonPrimary onClick={() => doReset(false)}>Та же раскладка</ModalButtonPrimary>
               <ModalButtonDanger onClick={() => doReset(true)}>Новая раскладка</ModalButtonDanger>
-              {canShare && <ShareButton onClick={() => handleShare('deadlock')}>Поделиться</ShareButton>}
+              {isBrowser && (
+                canShare ? (
+                  <ShareButtonGroup>
+                    <ShareButton onClick={() => handleShare('deadlock')}>Поделиться</ShareButton>
+                    <CopyLinkButton onClick={handleCopyLink} title="Скопировать ссылку">📋</CopyLinkButton>
+                  </ShareButtonGroup>
+                ) : (
+                  <CopyOnlyButton onClick={handleCopyLink}>📋 Скопировать</CopyOnlyButton>
+                )
+              )}
             </ModalButtons>
             <CancelButton onClick={() => { setShowDeadlockModal(false); handleUndo(); }}>Отменить ход</CancelButton>
           </ModalContent>
@@ -1185,7 +1278,16 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             <SeedModalButtons>
               <ModalButtonPrimary onClick={handleApplySeed}>Применить</ModalButtonPrimary>
               <ModalButton onClick={handleNewSeed}>Новый seed</ModalButton>
-              {canShare && <ShareButton onClick={() => handleShare('seed')}>Поделиться</ShareButton>}
+              {isBrowser && (
+                canShare ? (
+                  <ShareButtonGroup>
+                    <ShareButton onClick={() => handleShare('seed')}>Поделиться</ShareButton>
+                    <CopyLinkButton onClick={handleCopyLink} title="Скопировать ссылку">📋</CopyLinkButton>
+                  </ShareButtonGroup>
+                ) : (
+                  <CopyOnlyButton onClick={handleCopyLink}>📋 Скопировать</CopyOnlyButton>
+                )
+              )}
               <ModalButtonSecondary onClick={() => setShowSeedModal(false)}>Отмена</ModalButtonSecondary>
             </SeedModalButtons>
           </SeedModalContent>
@@ -1200,7 +1302,7 @@ export default function SortingGame({ onBack }: SortingGameProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
           >
-            Seed скопирован!
+            Скопировано!
           </CopiedToast>
         )}
       </AnimatePresence>
