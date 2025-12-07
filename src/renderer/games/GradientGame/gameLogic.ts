@@ -1,4 +1,4 @@
-import { LevelConfig } from './levels';
+import { LevelConfig, LEVEL_PACKS } from './levels';
 
 export interface Tile {
   id: string;
@@ -233,9 +233,18 @@ export const markLevelComplete = (
   saveProgress(progress);
 };
 
+// Get IDs of first levels in each pack
+const getFirstLevelIds = (): Set<string> => {
+  return new Set(LEVEL_PACKS.map(pack => pack.levels[0]?.id).filter(Boolean));
+};
+
 export const isLevelUnlocked = (levelId: string, allLevelIds: string[]): boolean => {
   const levelIndex = allLevelIds.indexOf(levelId);
   if (levelIndex === 0) return true; // First level always unlocked
+
+  // First level of each pack is always unlocked
+  const firstLevelIds = getFirstLevelIds();
+  if (firstLevelIds.has(levelId)) return true;
 
   // Previous level must be completed
   const prevLevelId = allLevelIds[levelIndex - 1];

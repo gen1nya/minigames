@@ -271,19 +271,18 @@ const GameArea = styled.div`
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
 `;
 
-const GridContainer = styled.div<{ $cols: number; $rows: number; $gap: number }>`
+const GridContainer = styled.div.attrs<{ $cols: number; $rows: number; $gap: number; $showGap: boolean; $tileSize: number }>(props => ({
+  style: {
+    gridTemplateColumns: `repeat(${props.$cols}, ${props.$tileSize}px)`,
+    gridTemplateRows: `repeat(${props.$rows}, ${props.$tileSize}px)`,
+    gap: `${props.$showGap ? props.$gap : 0}px`,
+  },
+}))`
   display: grid;
-  grid-template-columns: repeat(${props => props.$cols}, minmax(50px, 80px));
-  grid-template-rows: repeat(${props => props.$rows}, minmax(50px, 80px));
-  gap: ${props => props.$gap}px;
   justify-content: center;
-
-  @media (max-width: 500px) {
-    grid-template-columns: repeat(${props => props.$cols}, minmax(40px, 60px));
-    grid-template-rows: repeat(${props => props.$rows}, minmax(40px, 60px));
-  }
 `;
 
 const TileWrapper = styled(motion.div)<{
@@ -311,20 +310,28 @@ const TileElement = styled.div<{
   $shape: string;
   $isAnchor: boolean;
   $isSelected: boolean;
+  $seamlessMode: boolean;
 }>`
   width: 100%;
   height: 100%;
   background: ${props => props.$color};
   border-radius: ${props => {
+    if (props.$seamlessMode) return '0';
     switch (props.$shape) {
       case 'circle': return '50%';
       case 'hexagon': return '8px';
       default: return '8px';
     }
   }};
-  box-shadow: ${props => props.$isSelected
-    ? '0 0 0 3px rgba(255, 255, 255, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3)'
-    : '0 2px 8px rgba(0, 0, 0, 0.2)'};
+  box-shadow: ${props => {
+    if (props.$isSelected) {
+      return '0 0 0 3px rgba(255, 255, 255, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3)';
+    }
+   /* if (props.$seamlessMode) {
+      return 'inset 4px 4px 24px 8px rgba(0, 0, 0, 0.25)';
+    }*/
+    return '0 2px 8px rgba(0, 0, 0, 0.2)';
+  }};
   transition: box-shadow 0.2s ease;
   position: relative;
 
@@ -354,6 +361,32 @@ const AnchorIcon = styled.div`
   font-size: 20px;
   opacity: 0.6;
   pointer-events: none;
+`;
+
+// Settings toggle button
+const ToggleButton = styled.button<{ $active: boolean }>`
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: ${props => props.$active ? 'rgba(46, 204, 113, 0.3)' : 'rgba(255, 255, 255, 0.1)'};
+  color: ${props => props.$active ? '#2ecc71' : 'rgba(255, 255, 255, 0.6)'};
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: ${props => props.$active ? 'rgba(46, 204, 113, 0.4)' : 'rgba(255, 255, 255, 0.2)'};
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  @media (max-width: 600px) {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
 `;
 
 // Smoothness indicator
@@ -500,6 +533,13 @@ export default function GradientGame({ onBack }: GradientGameProps) {
   const [showWinModal, setShowWinModal] = useState(false);
   const [progress, setProgress] = useState<GameProgress>(() => loadProgress());
 
+  // Visual settings - seamless mode disables gap and border radius
+  const [seamlessMode, setSeamlessMode] = useState(false);
+
+  // Auto-scaling
+  const [tileSize, setTileSize] = useState(60);
+  const gameAreaRef = useRef<HTMLDivElement>(null);
+
   const timerRef = useRef<number | null>(null);
 
   const allLevelIds = ALL_LEVELS.map(l => l.id);
@@ -518,6 +558,44 @@ export default function GradientGame({ onBack }: GradientGameProps) {
       }
     };
   }, [screen, currentLevel, startTime, showWinModal]);
+
+  // Auto-scale tiles to fit the game area
+  useEffect(() => {
+    if (!currentLevel || !gameAreaRef.current) return;
+
+    const calculateTileSize = () => {
+      const container = gameAreaRef.current;
+      if (!container) return;
+
+      const gap = seamlessMode ? 0 : (currentLevel.gap ?? 4);
+      const padding = 40; // GameArea padding
+      const smoothnessBarHeight = 30; // Space for smoothness bar
+
+      const availableWidth = container.clientWidth - padding;
+      const availableHeight = container.clientHeight - padding - smoothnessBarHeight;
+
+      const totalGapWidth = gap * (currentLevel.cols - 1);
+      const totalGapHeight = gap * (currentLevel.rows - 1);
+
+      const maxTileWidth = (availableWidth - totalGapWidth) / currentLevel.cols;
+      const maxTileHeight = (availableHeight - totalGapHeight) / currentLevel.rows;
+
+      // Use the smaller dimension to ensure tiles are square and fit
+      const optimalSize = Math.floor(Math.min(maxTileWidth, maxTileHeight));
+
+      // Clamp between min and max sizes
+      const clampedSize = Math.max(30, Math.min(80, optimalSize));
+
+      setTileSize(clampedSize);
+    };
+
+    calculateTileSize();
+
+    const resizeObserver = new ResizeObserver(calculateTileSize);
+    resizeObserver.observe(gameAreaRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [currentLevel, seamlessMode]);
 
   // Start a level
   const startLevel = useCallback((level: LevelConfig) => {
@@ -675,13 +753,16 @@ export default function GradientGame({ onBack }: GradientGameProps) {
           <LevelTitle>{currentLevel.name}</LevelTitle>
         </HeaderCenter>
         <HeaderRight>
+          <ToggleButton $active={seamlessMode} onClick={() => setSeamlessMode(!seamlessMode)}>
+            Seamless
+          </ToggleButton>
           <Counter>{formatTime(elapsed)}</Counter>
           <Counter>Ходов: {moves}</Counter>
           <HeaderButton onClick={resetLevel}>⟲</HeaderButton>
         </HeaderRight>
       </Header>
 
-      <GameArea>
+      <GameArea ref={gameAreaRef}>
         <div>
           <SmoothnessBar>
             <SmoothnessProgress $value={smoothness} />
@@ -691,6 +772,8 @@ export default function GradientGame({ onBack }: GradientGameProps) {
             $cols={currentLevel.cols}
             $rows={currentLevel.rows}
             $gap={currentLevel.gap ?? 4}
+            $showGap={!seamlessMode}
+            $tileSize={tileSize}
           >
             {tiles.map((tile, index) => (
               <TileWrapper
@@ -708,6 +791,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
                   $shape={currentLevel.tileShape}
                   $isAnchor={tile.isAnchor}
                   $isSelected={selectedTile === index}
+                  $seamlessMode={seamlessMode}
                 >
                   {tile.isAnchor && <AnchorIcon>📌</AnchorIcon>}
                 </TileElement>
