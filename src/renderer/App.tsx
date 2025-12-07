@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import SortingGame from './games/SortingGame';
+import GradientGame from './games/GradientGame';
 
 const GlobalStyle = createGlobalStyle`
   * {
@@ -88,7 +89,7 @@ const GameDescription = styled.p`
   font-size: 0.9rem;
 `;
 
-type Screen = 'home' | 'sorting-game';
+type Screen = 'home' | 'sorting-game' | 'gradient-game';
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
@@ -98,6 +99,15 @@ function App() {
       <>
         <GlobalStyle />
         <SortingGame onBack={() => setScreen('home')} />
+      </>
+    );
+  }
+
+  if (screen === 'gradient-game') {
+    return (
+      <>
+        <GlobalStyle />
+        <GradientGame onBack={() => setScreen('home')} />
       </>
     );
   }
@@ -113,6 +123,11 @@ function App() {
             <GameIcon>🗼</GameIcon>
             <GameTitle>Color Tower Puzzle</GameTitle>
             <GameDescription>Отсортируй кольца по цветам на столбиках</GameDescription>
+          </GameCard>
+          <GameCard onClick={() => setScreen('gradient-game')}>
+            <GameIcon>🎨</GameIcon>
+            <GameTitle>Gradient Puzzle</GameTitle>
+            <GameDescription>Собери красивый градиент из перемешанных плиток</GameDescription>
           </GameCard>
         </GamesGrid>
       </Container>
