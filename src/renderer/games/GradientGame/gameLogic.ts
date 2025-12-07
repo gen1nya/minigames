@@ -189,6 +189,7 @@ export interface LevelProgress {
   completed: boolean;
   bestMoves?: number;
   bestTime?: number;
+  hintsUsed?: number;
 }
 
 export interface GameProgress {
@@ -219,15 +220,22 @@ export const saveProgress = (progress: GameProgress): void => {
 export const markLevelComplete = (
   levelId: string,
   moves: number,
-  time: number
+  time: number,
+  hintsUsed: number = 0
 ): void => {
   const progress = loadProgress();
   const existing = progress.completedLevels[levelId];
+
+  // For hints, we track the minimum used (fewer hints = better)
+  const bestHints = existing?.hintsUsed !== undefined
+    ? Math.min(existing.hintsUsed, hintsUsed)
+    : hintsUsed;
 
   progress.completedLevels[levelId] = {
     completed: true,
     bestMoves: existing?.bestMoves ? Math.min(existing.bestMoves, moves) : moves,
     bestTime: existing?.bestTime ? Math.min(existing.bestTime, time) : time,
+    hintsUsed: bestHints,
   };
 
   saveProgress(progress);
@@ -250,4 +258,49 @@ export const isLevelUnlocked = (levelId: string, allLevelIds: string[]): boolean
   const prevLevelId = allLevelIds[levelIndex - 1];
   const progress = loadProgress();
   return progress.completedLevels[prevLevelId]?.completed ?? false;
+};
+
+// Find a hint: returns indices of two tiles that should be swapped
+// Strategy: find two tiles that are each in the other's correct position
+export const findHint = (tiles: Tile[]): [number, number] | null => {
+  // First, try to find a perfect swap (both tiles go to their correct positions)
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i].isAnchor) continue;
+    if (tiles[i].correctIndex === i) continue; // Already in correct position
+
+    for (let j = i + 1; j < tiles.length; j++) {
+      if (tiles[j].isAnchor) continue;
+      if (tiles[j].correctIndex === j) continue; // Already in correct position
+
+      // Check if swapping would place both tiles correctly
+      if (tiles[i].correctIndex === j && tiles[j].correctIndex === i) {
+        return [i, j];
+      }
+    }
+  }
+
+  // If no perfect swap, find a swap where at least one tile goes to correct position
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i].isAnchor) continue;
+    if (tiles[i].correctIndex === i) continue;
+
+    const targetPos = tiles[i].correctIndex;
+    // Check if we can swap with the tile at target position
+    if (!tiles[targetPos].isAnchor) {
+      return [i, targetPos];
+    }
+  }
+
+  // Fallback: find any two tiles that are not in correct positions
+  const wrongTiles: number[] = [];
+  for (let i = 0; i < tiles.length; i++) {
+    if (!tiles[i].isAnchor && tiles[i].correctIndex !== i) {
+      wrongTiles.push(i);
+      if (wrongTiles.length === 2) {
+        return [wrongTiles[0], wrongTiles[1]];
+      }
+    }
+  }
+
+  return null; // Puzzle is already solved
 };

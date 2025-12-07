@@ -18,6 +18,7 @@ import {
   loadProgress,
   markLevelComplete,
   isLevelUnlocked,
+  findHint,
   GameProgress,
 } from './gameLogic';
 
@@ -36,6 +37,15 @@ const pulse = keyframes`
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+`;
+
+const hintGlow = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 8px 4px rgba(255, 215, 0, 0.6), 0 0 16px 8px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px 6px rgba(255, 215, 0, 0.8), 0 0 24px 12px rgba(255, 215, 0, 0.4);
+  }
 `;
 
 // Styled Components
@@ -313,6 +323,7 @@ const TileElement = styled.div<{
   $shape: string;
   $isAnchor: boolean;
   $isSelected: boolean;
+  $isHinted: boolean;
   $seamlessMode: boolean;
 }>`
   width: 100%;
@@ -330,13 +341,14 @@ const TileElement = styled.div<{
     if (props.$isSelected) {
       return '0 0 0 3px rgba(255, 255, 255, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3)';
     }
-   /* if (props.$seamlessMode) {
-      return 'inset 4px 4px 24px 8px rgba(0, 0, 0, 0.25)';
-    }*/
     return '0 2px 8px rgba(0, 0, 0, 0.2)';
   }};
   transition: box-shadow 0.2s ease;
   position: relative;
+
+  ${props => props.$isHinted && css`
+    animation: ${hintGlow} 1s ease-in-out infinite;
+  `}
 
   ${props => props.$isAnchor && css`
     &::after {
@@ -536,6 +548,10 @@ export default function GradientGame({ onBack }: GradientGameProps) {
   const [showWinModal, setShowWinModal] = useState(false);
   const [progress, setProgress] = useState<GameProgress>(() => loadProgress());
 
+  // Hints
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [hintedTiles, setHintedTiles] = useState<[number, number] | null>(null);
+
   // Visual settings - seamless mode disables gap and border radius
   const [seamlessMode, setSeamlessMode] = useState(false);
 
@@ -607,6 +623,8 @@ export default function GradientGame({ onBack }: GradientGameProps) {
     setTiles(newTiles);
     setSelectedTile(null);
     setMoves(0);
+    setHintsUsed(0);
+    setHintedTiles(null);
     setStartTime(Date.now());
     setElapsed(0);
     setShowWinModal(false);
@@ -616,6 +634,9 @@ export default function GradientGame({ onBack }: GradientGameProps) {
   // Handle tile click/tap
   const handleTileClick = useCallback((index: number) => {
     if (!currentLevel) return;
+
+    // Clear hint highlight on any click
+    setHintedTiles(null);
 
     const tile = tiles[index];
     if (tile.isAnchor) return;
@@ -635,7 +656,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
         // Check for win
         if (checkComplete(newTiles)) {
           const time = Date.now() - startTime;
-          markLevelComplete(currentLevel.id, moves + 1, time);
+          markLevelComplete(currentLevel.id, moves + 1, time, hintsUsed);
           setProgress(loadProgress());
           setShowWinModal(true);
         }
@@ -643,7 +664,20 @@ export default function GradientGame({ onBack }: GradientGameProps) {
         setSelectedTile(null);
       }
     }
-  }, [tiles, selectedTile, currentLevel, startTime, moves]);
+  }, [tiles, selectedTile, currentLevel, startTime, moves, hintsUsed]);
+
+  // Show hint
+  const showHint = useCallback(() => {
+    // Don't count if hint is already displayed
+    if (hintedTiles !== null) return;
+
+    const hint = findHint(tiles);
+    if (hint) {
+      setHintedTiles(hint);
+      setHintsUsed(h => h + 1);
+      setSelectedTile(null);
+    }
+  }, [tiles, hintedTiles]);
 
   // Reset current level
   const resetLevel = useCallback(() => {
@@ -759,6 +793,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
           <ToggleButton $active={seamlessMode} onClick={() => setSeamlessMode(!seamlessMode)}>
             Seamless
           </ToggleButton>
+          <HeaderButton onClick={showHint}>💡 {hintsUsed > 0 && `(${hintsUsed})`}</HeaderButton>
           <Counter>{formatTime(elapsed)}</Counter>
           <Counter>Ходов: {moves}</Counter>
           <HeaderButton onClick={resetLevel}>⟲</HeaderButton>
@@ -794,6 +829,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
                   $shape={currentLevel.tileShape}
                   $isAnchor={tile.isAnchor}
                   $isSelected={selectedTile === index}
+                  $isHinted={hintedTiles !== null && (hintedTiles[0] === index || hintedTiles[1] === index)}
                   $seamlessMode={seamlessMode}
                 >
                   {tile.isAnchor && <AnchorIcon>📌</AnchorIcon>}
@@ -823,7 +859,8 @@ export default function GradientGame({ onBack }: GradientGameProps) {
               <ModalText>
                 Уровень "{currentLevel.name}" пройден!<br />
                 Время: {formatTime(elapsed)}<br />
-                Ходов: {moves}
+                Ходов: {moves}<br />
+                Подсказок: {hintsUsed}
               </ModalText>
               <ModalButtons>
                 {getNextLevel(currentLevel.id) ? (
