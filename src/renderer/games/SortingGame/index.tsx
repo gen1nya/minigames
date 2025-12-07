@@ -690,15 +690,30 @@ export default function SortingGame({ onBack }: SortingGameProps) {
     return `${baseUrl}?seed=${game.seed}&difficulty=${difficulty}`;
   };
 
-  const handleCopyLink = async () => {
+  const getShareText = (type: 'win' | 'deadlock' | 'seed') => {
+    const difficultyLabel = DIFFICULTY_LABELS[difficulty].label;
+    const shareUrl = getShareUrl();
+
+    switch (type) {
+      case 'win':
+        return `🎉 Я прошёл SortingGame (${difficultyLabel}) за ${game.historyLength} ходов!\n\nПопробуй побить мой результат:\n${shareUrl}`;
+      case 'deadlock':
+        return `🎯 Попробуй пройти этот уровень SortingGame (${difficultyLabel})!\n\n${shareUrl}`;
+      case 'seed':
+        return `🎮 Сыграй в SortingGame с этой раскладкой!\n\nСложность: ${difficultyLabel}\n${shareUrl}`;
+    }
+  };
+
+  const handleCopyLink = async (type: 'win' | 'deadlock' | 'seed') => {
+    const text = getShareText(type);
     try {
-      await navigator.clipboard.writeText(getShareUrl());
+      await navigator.clipboard.writeText(text);
       setShowCopiedToast(true);
       setTimeout(() => setShowCopiedToast(false), 2000);
     } catch {
       // Fallback - select text in a temporary input
-      const input = document.createElement('input');
-      input.value = getShareUrl();
+      const input = document.createElement('textarea');
+      input.value = text;
       document.body.appendChild(input);
       input.select();
       document.execCommand('copy');
@@ -711,26 +726,9 @@ export default function SortingGame({ onBack }: SortingGameProps) {
   const handleShare = async (type: 'win' | 'deadlock' | 'seed') => {
     if (!canShare) return;
 
-    const difficultyLabel = DIFFICULTY_LABELS[difficulty].label;
-    const shareUrl = getShareUrl();
-
-    let text: string;
-
-    switch (type) {
-      case 'win':
-        text = `🎉 Я прошёл SortingGame (${difficultyLabel}) за ${game.historyLength} ходов!\n\nПопробуй побить мой результат:\n${shareUrl}`;
-        break;
-      case 'deadlock':
-        text = `🎯 Попробуй пройти этот уровень SortingGame (${difficultyLabel})!\n\n${shareUrl}`;
-        break;
-      case 'seed':
-        text = `🎮 Сыграй в SortingGame с этой раскладкой!\n\nСложность: ${difficultyLabel}\n${shareUrl}`;
-        break;
-    }
-
     try {
       // Use only 'text' - iOS ignores 'title' and 'url' in many apps
-      await navigator.share({ text });
+      await navigator.share({ text: getShareText(type) });
     } catch (err) {
       // User cancelled or share failed silently
       if ((err as Error).name !== 'AbortError') {
@@ -1116,10 +1114,10 @@ export default function SortingGame({ onBack }: SortingGameProps) {
                 canShare ? (
                   <ShareButtonGroup>
                     <ShareButton onClick={() => handleShare('win')}>Поделиться</ShareButton>
-                    <CopyLinkButton onClick={handleCopyLink} title="Скопировать ссылку">📋</CopyLinkButton>
+                    <CopyLinkButton onClick={() => handleCopyLink('win')} title="Скопировать ссылку">📋</CopyLinkButton>
                   </ShareButtonGroup>
                 ) : (
-                  <CopyOnlyButton onClick={handleCopyLink}>📋 Скопировать</CopyOnlyButton>
+                  <CopyOnlyButton onClick={() => handleCopyLink('win')}>📋 Скопировать</CopyOnlyButton>
                 )
               )}
               <ModalButtonSecondary onClick={onBack}>В меню</ModalButtonSecondary>
@@ -1151,10 +1149,10 @@ export default function SortingGame({ onBack }: SortingGameProps) {
                 canShare ? (
                   <ShareButtonGroup>
                     <ShareButton onClick={() => handleShare('deadlock')}>Поделиться</ShareButton>
-                    <CopyLinkButton onClick={handleCopyLink} title="Скопировать ссылку">📋</CopyLinkButton>
+                    <CopyLinkButton onClick={() => handleCopyLink('deadlock')} title="Скопировать ссылку">📋</CopyLinkButton>
                   </ShareButtonGroup>
                 ) : (
-                  <CopyOnlyButton onClick={handleCopyLink}>📋 Скопировать</CopyOnlyButton>
+                  <CopyOnlyButton onClick={() => handleCopyLink('deadlock')}>📋 Скопировать</CopyOnlyButton>
                 )
               )}
             </ModalButtons>
@@ -1275,10 +1273,10 @@ export default function SortingGame({ onBack }: SortingGameProps) {
                 canShare ? (
                   <ShareButtonGroup>
                     <ShareButton onClick={() => handleShare('seed')}>Поделиться</ShareButton>
-                    <CopyLinkButton onClick={handleCopyLink} title="Скопировать ссылку">📋</CopyLinkButton>
+                    <CopyLinkButton onClick={() => handleCopyLink('seed')} title="Скопировать ссылку">📋</CopyLinkButton>
                   </ShareButtonGroup>
                 ) : (
-                  <CopyOnlyButton onClick={handleCopyLink}>📋 Скопировать</CopyOnlyButton>
+                  <CopyOnlyButton onClick={() => handleCopyLink('seed')}>📋 Скопировать</CopyOnlyButton>
                 )
               )}
               <ModalButtonSecondary onClick={() => setShowSeedModal(false)}>Отмена</ModalButtonSecondary>
