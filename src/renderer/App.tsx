@@ -1,7 +1,57 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import SortingGame from './games/SortingGame';
 import GradientGame from './games/GradientGame';
+
+type Screen = 'home' | 'sorting-game' | 'gradient-game';
+
+// Parse game parameter from URL
+const getScreenFromURL = (): Screen => {
+  if (typeof window === 'undefined') return 'home';
+  const params = new URLSearchParams(window.location.search);
+  const game = params.get('game');
+
+  switch (game) {
+    case 'sorting':
+      return 'sorting-game';
+    case 'gradient':
+      return 'gradient-game';
+    default:
+      // Legacy support: if seed or difficulty params exist, it's a SortingGame link
+      if (params.has('seed') || params.has('difficulty')) {
+        return 'sorting-game';
+      }
+      return 'home';
+  }
+};
+
+// Update URL when navigating (preserves other params for games)
+const updateURL = (screen: Screen, preserveParams = false) => {
+  if (typeof window === 'undefined') return;
+
+  const currentParams = new URLSearchParams(window.location.search);
+  const newParams = new URLSearchParams();
+
+  // Preserve game-specific params when navigating to a game
+  if (preserveParams) {
+    currentParams.forEach((value, key) => {
+      if (key !== 'game') {
+        newParams.set(key, value);
+      }
+    });
+  }
+
+  if (screen === 'home') {
+    // Clear all params for home
+    const newURL = window.location.pathname;
+    window.history.pushState({ screen }, '', newURL);
+  } else {
+    const gameParam = screen === 'sorting-game' ? 'sorting' : 'gradient';
+    newParams.set('game', gameParam);
+    const newURL = `${window.location.pathname}?${newParams.toString()}`;
+    window.history.pushState({ screen }, '', newURL);
+  }
+};
 
 const GlobalStyle = createGlobalStyle`
   * {
@@ -89,16 +139,30 @@ const GameDescription = styled.p`
   font-size: 0.9rem;
 `;
 
-type Screen = 'home' | 'sorting-game' | 'gradient-game';
-
 function App() {
-  const [screen, setScreen] = useState<Screen>('home');
+  const [screen, setScreen] = useState<Screen>(getScreenFromURL);
+
+  // Navigate to a screen and update URL
+  const navigateTo = useCallback((newScreen: Screen) => {
+    updateURL(newScreen, false);
+    setScreen(newScreen);
+  }, []);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setScreen(getScreenFromURL());
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   if (screen === 'sorting-game') {
     return (
       <>
         <GlobalStyle />
-        <SortingGame onBack={() => setScreen('home')} />
+        <SortingGame onBack={() => navigateTo('home')} />
       </>
     );
   }
@@ -107,7 +171,7 @@ function App() {
     return (
       <>
         <GlobalStyle />
-        <GradientGame onBack={() => setScreen('home')} />
+        <GradientGame onBack={() => navigateTo('home')} />
       </>
     );
   }
@@ -119,12 +183,12 @@ function App() {
         <Title>Minigames</Title>
         <Subtitle>Выбери игру</Subtitle>
         <GamesGrid>
-          <GameCard onClick={() => setScreen('sorting-game')}>
+          <GameCard onClick={() => navigateTo('sorting-game')}>
             <GameIcon>🗼</GameIcon>
             <GameTitle>Color Tower Puzzle</GameTitle>
             <GameDescription>Отсортируй кольца по цветам на столбиках</GameDescription>
           </GameCard>
-          <GameCard onClick={() => setScreen('gradient-game')}>
+          <GameCard onClick={() => navigateTo('gradient-game')}>
             <GameIcon>🎨</GameIcon>
             <GameTitle>Gradient Puzzle</GameTitle>
             <GameDescription>Собери красивый градиент из перемешанных плиток</GameDescription>
