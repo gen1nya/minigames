@@ -287,7 +287,7 @@ const GameArea = styled.div`
   overflow: hidden;
 `;
 
-const GridContainer = styled.div.attrs<{ $cols: number; $rows: number; $gap: number; $showGap: boolean; $tileSize: number }>(props => ({
+const GridContainer = styled.div.attrs<{ $cols: number; $rows: number; $gap: number; $showGap: boolean; $tileSize: number; $celebrating: boolean }>(props => ({
   style: {
     gridTemplateColumns: `repeat(${props.$cols}, ${props.$tileSize}px)`,
     gridTemplateRows: `repeat(${props.$rows}, ${props.$tileSize}px)`,
@@ -296,6 +296,13 @@ const GridContainer = styled.div.attrs<{ $cols: number; $rows: number; $gap: num
 }))`
   display: grid;
   justify-content: center;
+  transition: box-shadow 0.5s ease;
+
+  ${props => props.$celebrating && css`
+    box-shadow: 0 0 30px 15px rgba(255, 255, 255, 0.4),
+                0 0 60px 30px rgba(255, 255, 255, 0.2),
+                0 0 100px 50px rgba(255, 255, 255, 0.1);
+  `}
 `;
 
 const TileWrapper = styled(motion.div)<{
@@ -556,6 +563,9 @@ export default function GradientGame({ onBack }: GradientGameProps) {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [hintedTiles, setHintedTiles] = useState<[number, number] | null>(null);
 
+  // Celebration state (pause before showing win modal)
+  const [celebrating, setCelebrating] = useState(false);
+
   // Visual settings - seamless mode disables gap and border radius
   const [seamlessMode, setSeamlessMode] = useState(true);
 
@@ -629,6 +639,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
     setMoves(0);
     setHintsUsed(0);
     setHintedTiles(null);
+    setCelebrating(false);
     setStartTime(Date.now());
     setElapsed(0);
     setShowWinModal(false);
@@ -637,7 +648,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
 
   // Handle tile click/tap
   const handleTileClick = useCallback((index: number) => {
-    if (!currentLevel) return;
+    if (!currentLevel || celebrating) return;
 
     // Clear hint highlight on any click
     setHintedTiles(null);
@@ -662,18 +673,24 @@ export default function GradientGame({ onBack }: GradientGameProps) {
           const time = Date.now() - startTime;
           markLevelComplete(currentLevel.id, moves + 1, time, hintsUsed);
           setProgress(loadProgress());
-          setShowWinModal(true);
+
+          // Start celebration, show modal after 3 seconds
+          setCelebrating(true);
+          setTimeout(() => {
+            setCelebrating(false);
+            setShowWinModal(true);
+          }, 3000);
         }
       } else {
         setSelectedTile(null);
       }
     }
-  }, [tiles, selectedTile, currentLevel, startTime, moves, hintsUsed]);
+  }, [tiles, selectedTile, currentLevel, startTime, moves, hintsUsed, celebrating]);
 
   // Show hint
   const showHint = useCallback(() => {
-    // Don't count if hint is already displayed
-    if (hintedTiles !== null) return;
+    // Don't count if hint is already displayed or celebrating
+    if (hintedTiles !== null || celebrating) return;
 
     const hint = findHint(tiles);
     if (hint) {
@@ -681,14 +698,14 @@ export default function GradientGame({ onBack }: GradientGameProps) {
       setHintsUsed(h => h + 1);
       setSelectedTile(null);
     }
-  }, [tiles, hintedTiles]);
+  }, [tiles, hintedTiles, celebrating]);
 
   // Reset current level
   const resetLevel = useCallback(() => {
-    if (currentLevel) {
+    if (currentLevel && !celebrating) {
       startLevel(currentLevel);
     }
-  }, [currentLevel, startLevel]);
+  }, [currentLevel, startLevel, celebrating]);
 
   // Go to next level
   const goToNextLevel = useCallback(() => {
@@ -709,6 +726,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
     setScreen('levels');
     setCurrentLevel(null);
     setShowWinModal(false);
+    setCelebrating(false);
     setProgress(loadProgress());
   }, []);
 
@@ -794,7 +812,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
           <LevelTitle>{currentLevel.name}</LevelTitle>
         </HeaderCenter>
         <HeaderRight>
-          <ToggleButton $active={seamlessMode} onClick={() => setSeamlessMode(!seamlessMode)}>
+          <ToggleButton $active={seamlessMode} onClick={() => !celebrating && setSeamlessMode(!seamlessMode)}>
             Seamless
           </ToggleButton>
           <HeaderButton onClick={showHint}>💡 {hintsUsed > 0 && `(${hintsUsed})`}</HeaderButton>
@@ -816,6 +834,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
             $gap={currentLevel.gap ?? 4}
             $showGap={!seamlessMode}
             $tileSize={tileSize}
+            $celebrating={celebrating}
           >
             {tiles.map((tile, index) => (
               <TileWrapper
