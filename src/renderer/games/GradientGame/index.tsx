@@ -354,9 +354,13 @@ const TileElement = styled.div<{
     &::after {
       content: '';
       position: absolute;
-      inset: 4px;
-      border: 2px dashed rgba(255, 255, 255, 0.5);
-      border-radius: inherit;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 4px;
+      height: 4px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
       pointer-events: none;
     }
   `}
@@ -553,7 +557,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
   const [hintedTiles, setHintedTiles] = useState<[number, number] | null>(null);
 
   // Visual settings - seamless mode disables gap and border radius
-  const [seamlessMode, setSeamlessMode] = useState(false);
+  const [seamlessMode, setSeamlessMode] = useState(true);
 
   // Auto-scaling
   const [tileSize, setTileSize] = useState(60);
@@ -832,7 +836,6 @@ export default function GradientGame({ onBack }: GradientGameProps) {
                   $isHinted={hintedTiles !== null && (hintedTiles[0] === index || hintedTiles[1] === index)}
                   $seamlessMode={seamlessMode}
                 >
-                  {tile.isAnchor && <AnchorIcon>📌</AnchorIcon>}
                 </TileElement>
               </TileWrapper>
             ))}
