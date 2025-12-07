@@ -48,6 +48,9 @@ const GameContainer = styled.div`
   color: #eee;
   position: relative;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 `;
 
 const Header = styled.header`
