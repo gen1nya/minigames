@@ -14,7 +14,7 @@ import {
   shuffleTiles,
   swapTiles,
   checkComplete,
-  calculateSmoothness,
+  calculateScore,
   loadProgress,
   markLevelComplete,
   isLevelUnlocked,
@@ -708,8 +708,8 @@ export default function GradientGame({ onBack }: GradientGameProps) {
     setProgress(loadProgress());
   }, []);
 
-  // Calculate smoothness for current state
-  const smoothness = currentLevel ? calculateSmoothness(tiles, currentLevel.cols) : 0;
+  // Calculate correctness score for current state
+  const correctness = currentLevel ? calculateScore(tiles) : 0;
 
   // Render level selection
   if (screen === 'levels') {
@@ -803,7 +803,7 @@ export default function GradientGame({ onBack }: GradientGameProps) {
       <GameArea ref={gameAreaRef}>
         <div>
           <SmoothnessBar>
-            <SmoothnessProgress $value={smoothness} />
+            <SmoothnessProgress $value={correctness} />
           </SmoothnessBar>
 
           <GridContainer

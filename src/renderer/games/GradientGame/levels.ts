@@ -198,7 +198,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#f5b041',
         },
         anchors: [0, 5, 14, 15, 24, 29],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
     ],
   },
@@ -247,7 +247,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#a3e4d7',
         },
         anchors: [0, 4, 12, 20, 24],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'ocean-4',
@@ -310,7 +310,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#f5eef8',
         },
         anchors: [0, 4, 12, 20, 24],
-        tileShape: 'hexagon',
+        tileShape: 'square',
       },
       {
         id: 'lavender-4',
@@ -324,7 +324,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#bb8fce',
         },
         anchors: [0, 5, 17, 18, 30, 35],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
     ],
   },
@@ -373,7 +373,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#f39c12',
         },
         anchors: [0, 6, 20, 21, 35, 41],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'advanced-4',
@@ -450,7 +450,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#5dade2',
         },
         anchors: [0, 7, 27, 36, 56, 63],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'mega-5',
@@ -520,7 +520,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#fdebd0',
         },
         anchors: [0, 8, 72, 80],
-        tileShape: 'hexagon',
+        tileShape: 'square',
       },
       {
         id: 'mega-10',
@@ -562,7 +562,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#ffab91',
         },
         anchors: [0, 8, 36, 44, 72, 80],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
     ],
   },
@@ -709,7 +709,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#fdcb6e',
         },
         anchors: [0, 11, 54, 65, 108, 119],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'extreme-11',
@@ -751,7 +751,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#27ae60',
         },
         anchors: [0, 11, 108, 119],
-        tileShape: 'hexagon',
+        tileShape: 'square',
       },
       {
         id: 'extreme-14',
@@ -842,7 +842,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#f39c12',
         },
         anchors: [0, 14, 67, 82, 135, 149],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'master-5',
@@ -926,7 +926,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#81ecec',
         },
         anchors: [0, 11, 132, 143],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'master-11',
@@ -968,7 +968,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#76d7c4',
         },
         anchors: [0, 12, 130, 142],
-        tileShape: 'hexagon',
+        tileShape: 'square',
       },
       {
         id: 'master-14',
@@ -996,7 +996,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#fdcb6e',
         },
         anchors: [0, 11, 66, 77, 132, 143],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
     ],
   },
@@ -1045,7 +1045,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#9b59b6',
         },
         anchors: [0, 13, 91, 104, 182, 195],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'ultimate-4',
@@ -1129,7 +1129,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#fdcb6e',
         },
         anchors: [0, 13, 84, 97, 168, 181],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'ultimate-10',
@@ -1185,7 +1185,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#1abc9c',
         },
         anchors: [0, 14, 195, 209],
-        tileShape: 'hexagon',
+        tileShape: 'square',
       },
       {
         id: 'ultimate-14',
@@ -1199,7 +1199,7 @@ export const LEVEL_PACKS: LevelPack[] = [
           bottomRight: '#81ecec',
         },
         anchors: [0, 13, 98, 111, 196, 209],
-        tileShape: 'circle',
+        tileShape: 'square',
       },
       {
         id: 'ultimate-15',
