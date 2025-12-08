@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import SortingGame from './games/SortingGame';
 import GradientGame from './games/GradientGame';
+import TetrisPuzzle from './games/TetrisPuzzle';
 
-type Screen = 'home' | 'sorting-game' | 'gradient-game';
+type Screen = 'home' | 'sorting-game' | 'gradient-game' | 'tetris-puzzle';
 
 // Parse game parameter from URL
 const getScreenFromURL = (): Screen => {
@@ -16,6 +17,8 @@ const getScreenFromURL = (): Screen => {
       return 'sorting-game';
     case 'gradient':
       return 'gradient-game';
+    case 'tetris':
+      return 'tetris-puzzle';
     default:
       // Legacy support: if seed or difficulty params exist, it's a SortingGame link
       if (params.has('seed') || params.has('difficulty')) {
@@ -46,8 +49,13 @@ const updateURL = (screen: Screen, preserveParams = false) => {
     const newURL = window.location.pathname;
     window.history.pushState({ screen }, '', newURL);
   } else {
-    const gameParam = screen === 'sorting-game' ? 'sorting' : 'gradient';
-    newParams.set('game', gameParam);
+    const gameParamMap: Record<Screen, string> = {
+      'home': '',
+      'sorting-game': 'sorting',
+      'gradient-game': 'gradient',
+      'tetris-puzzle': 'tetris',
+    };
+    newParams.set('game', gameParamMap[screen]);
     const newURL = `${window.location.pathname}?${newParams.toString()}`;
     window.history.pushState({ screen }, '', newURL);
   }
@@ -176,6 +184,15 @@ function App() {
     );
   }
 
+  if (screen === 'tetris-puzzle') {
+    return (
+      <>
+        <GlobalStyle />
+        <TetrisPuzzle onBack={() => navigateTo('home')} />
+      </>
+    );
+  }
+
   return (
     <>
       <GlobalStyle />
@@ -192,6 +209,11 @@ function App() {
             <GameIcon>🎨</GameIcon>
             <GameTitle>Gradient Puzzle</GameTitle>
             <GameDescription>Собери красивый градиент из перемешанных плиток</GameDescription>
+          </GameCard>
+          <GameCard onClick={() => navigateTo('tetris-puzzle')}>
+            <GameIcon>🧩</GameIcon>
+            <GameTitle>Tetris Puzzle</GameTitle>
+            <GameDescription>Собери картинку из падающих тетрис-фигур</GameDescription>
           </GameCard>
         </GamesGrid>
       </Container>
