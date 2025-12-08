@@ -7,7 +7,6 @@ import {
   dropPiece,
   placePiece,
   canPlacePiece,
-  checkWinCondition,
   calculateCorrectPieces,
   getShapeBounds,
   loadImage,
@@ -510,6 +509,26 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
           const newPlacedPieces = [...prev.placedPieces, placedPiece];
           const [nextPiece, ...remainingPieces] = prev.nextPieces;
 
+          // Check if piece is placed correctly
+          const isCorrectPlacement =
+            placedPiece.row === placedPiece.targetRow &&
+            placedPiece.col === placedPiece.targetCol &&
+            placedPiece.rotation === placedPiece.targetRotation &&
+            placedPiece.visualRotation === 0;
+
+          // Game over if piece placed incorrectly
+          if (!isCorrectPlacement) {
+            return {
+              ...prev,
+              occupiedCells: newOccupiedCells,
+              placedPieces: newPlacedPieces,
+              currentPiece: null,
+              nextPieces: remainingPieces,
+              piecesPlaced: prev.piecesPlaced + 1,
+              isGameOver: true,
+            };
+          }
+
           // Check if we can place the next piece
           if (nextPiece && !canPlacePiece(nextPiece, newOccupiedCells, FIELD_WIDTH, FIELD_HEIGHT)) {
             return {
@@ -524,7 +543,7 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
           }
 
           // Check win condition
-          const isWon = remainingPieces.length === 0 && !nextPiece && checkWinCondition(newPlacedPieces);
+          const isWon = remainingPieces.length === 0 && !nextPiece;
 
           return {
             ...prev,
@@ -635,6 +654,26 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
       const newPlacedPieces = [...prev.placedPieces, placedPiece];
       const [nextPiece, ...remainingPieces] = prev.nextPieces;
 
+      // Check if piece is placed correctly
+      const isCorrectPlacement =
+        placedPiece.row === placedPiece.targetRow &&
+        placedPiece.col === placedPiece.targetCol &&
+        placedPiece.rotation === placedPiece.targetRotation &&
+        placedPiece.visualRotation === 0;
+
+      // Game over if piece placed incorrectly
+      if (!isCorrectPlacement) {
+        return {
+          ...prev,
+          occupiedCells: newOccupiedCells,
+          placedPieces: newPlacedPieces,
+          currentPiece: null,
+          nextPieces: remainingPieces,
+          piecesPlaced: prev.piecesPlaced + 1,
+          isGameOver: true,
+        };
+      }
+
       if (nextPiece && !canPlacePiece(nextPiece, newOccupiedCells, FIELD_WIDTH, FIELD_HEIGHT)) {
         return {
           ...prev,
@@ -647,7 +686,7 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
         };
       }
 
-      const isWon = remainingPieces.length === 0 && !nextPiece && checkWinCondition(newPlacedPieces);
+      const isWon = remainingPieces.length === 0 && !nextPiece;
 
       return {
         ...prev,
@@ -874,6 +913,7 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
       </ControlsContainer>
 
       <ActionButtonsRow>
+        <ActionButton onClick={() => initGame(seed)}>Reset</ActionButton>
         <ActionButton onClick={() => initGame()}>New Game</ActionButton>
       </ActionButtonsRow>
 
@@ -899,12 +939,11 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
           <Modal onClick={e => e.stopPropagation()}>
             <ModalTitle>Game Over</ModalTitle>
             <ModalText>
-              The field is blocked! You placed {gameState?.piecesPlaced} of {gameState?.totalPieces} pieces.
-              <br />
-              {correctPieces} pieces are correctly positioned.
+              Piece placed incorrectly! You placed {gameState?.piecesPlaced} of {gameState?.totalPieces} pieces.
             </ModalText>
             <ModalButtons>
-              <ActionButton $variant="danger" onClick={() => initGame()}>Try Again</ActionButton>
+              <ActionButton $variant="danger" onClick={() => initGame(seed)}>Try Again</ActionButton>
+              <ActionButton onClick={() => initGame()}>New Game</ActionButton>
               <ActionButton onClick={onBack}>Back to Menu</ActionButton>
             </ModalButtons>
           </Modal>
