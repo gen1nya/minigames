@@ -7,6 +7,7 @@ import {
   dropPiece,
   placePiece,
   canPlacePiece,
+  isPieceCorrectlyPlaced,
   calculateCorrectPieces,
   getShapeBounds,
   loadImage,
@@ -529,15 +530,8 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
           const newPlacedPieces = [...prev.placedPieces, placedPiece];
           const [nextPiece, ...remainingPieces] = prev.nextPieces;
 
-          // Check if piece is placed correctly
-          const isCorrectPlacement =
-            placedPiece.row === placedPiece.targetRow &&
-            placedPiece.col === placedPiece.targetCol &&
-            placedPiece.rotation === placedPiece.targetRotation &&
-            placedPiece.visualRotation === 0;
-
           // Game over if piece placed incorrectly
-          if (!isCorrectPlacement) {
+          if (!isPieceCorrectlyPlaced(placedPiece)) {
             return {
               ...prev,
               occupiedCells: newOccupiedCells,
@@ -675,15 +669,8 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
       const newPlacedPieces = [...prev.placedPieces, placedPiece];
       const [nextPiece, ...remainingPieces] = prev.nextPieces;
 
-      // Check if piece is placed correctly
-      const isCorrectPlacement =
-        placedPiece.row === placedPiece.targetRow &&
-        placedPiece.col === placedPiece.targetCol &&
-        placedPiece.rotation === placedPiece.targetRotation &&
-        placedPiece.visualRotation === 0;
-
       // Game over if piece placed incorrectly
-      if (!isCorrectPlacement) {
+      if (!isPieceCorrectlyPlaced(placedPiece)) {
         return {
           ...prev,
           occupiedCells: newOccupiedCells,
@@ -762,11 +749,7 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
   ) => {
     if (!gameState) return null;
 
-    const isCorrect =
-      piece.row === piece.targetRow &&
-      piece.col === piece.targetCol &&
-      piece.rotation === piece.targetRotation &&
-      piece.visualRotation === 0;
+    const isCorrect = isPieceCorrectlyPlaced(piece as PlacedPiece);
 
     return (
       <PieceElement

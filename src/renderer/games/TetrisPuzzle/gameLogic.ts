@@ -590,11 +590,11 @@ export function rotatePiece(
   fieldWidth: number,
   fieldHeight: number
 ): Piece | null {
-  // O piece doesn't rotate visually different
+  // O piece doesn't change shape but still needs rotation tracking
   if (piece.type === 'O') {
-    // Still update visual rotation for the image
+    const newRotation = (piece.rotation + direction + 4) % 4;
     const newVisualRotation = (piece.visualRotation + direction + 4) % 4;
-    return { ...piece, visualRotation: newVisualRotation };
+    return { ...piece, rotation: newRotation, visualRotation: newVisualRotation };
   }
 
   const newRotation = (piece.rotation + direction + 4) % 4;
@@ -664,14 +664,36 @@ export function dropPiece(
   return currentPiece;
 }
 
+// Check if piece is placed correctly by comparing actual cells
+export function isPieceCorrectlyPlaced(piece: PlacedPiece): boolean {
+  // Visual rotation must be 0 (image not rotated)
+  if (piece.visualRotation !== 0) return false;
+
+  // Shape rotation must match target
+  if (piece.rotation !== piece.targetRotation) return false;
+
+  // Get actual cells of placed piece
+  const placedCells = getPieceCells(piece);
+
+  // Get target cells (where piece should be)
+  const targetPiece = {
+    type: piece.type,
+    rotation: piece.targetRotation,
+    row: piece.targetRow,
+    col: piece.targetCol,
+  };
+  const targetCells = getPieceCells(targetPiece);
+
+  // Compare cells (sort for consistent comparison)
+  const sortCells = (cells: [number, number][]) =>
+    cells.map(([r, c]) => `${r},${c}`).sort().join(';');
+
+  return sortCells(placedCells) === sortCells(targetCells);
+}
+
 // Calculate correct pieces
 export function calculateCorrectPieces(placedPieces: PlacedPiece[]): number {
-  return placedPieces.filter(p =>
-    p.row === p.targetRow &&
-    p.col === p.targetCol &&
-    p.rotation === p.targetRotation &&
-    p.visualRotation === 0
-  ).length;
+  return placedPieces.filter(isPieceCorrectlyPlaced).length;
 }
 
 // Load image
