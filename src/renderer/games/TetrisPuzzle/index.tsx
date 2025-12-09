@@ -467,6 +467,12 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
   const [seed, setSeed] = useState(Date.now());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropIntervalRef = useRef<number | null>(null);
+  const gameStateRef = useRef<GameState | null>(null);
+
+  // Keep ref in sync with state for interval callback
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   // Initialize game
   const initGame = useCallback((newSeed?: number) => {
@@ -481,15 +487,29 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
     initGame(seed);
   }, [imageUrl, sourceImage]);
 
-  // Drop interval
+  // Drop interval - uses ref to avoid resetting on piece changes
   useEffect(() => {
-    if (!gameState || !gameState.currentPiece || gameState.isWon || gameState.isGameOver) {
+    const isActive = gameState && gameState.currentPiece && !gameState.isWon && !gameState.isGameOver;
+
+    if (!isActive) {
+      if (dropIntervalRef.current) {
+        clearInterval(dropIntervalRef.current);
+        dropIntervalRef.current = null;
+      }
       return;
     }
 
     const interval = isFastDrop ? FAST_DROP_INTERVAL : DROP_INTERVAL;
 
+    // Clear previous interval if exists
+    if (dropIntervalRef.current) {
+      clearInterval(dropIntervalRef.current);
+    }
+
     dropIntervalRef.current = window.setInterval(() => {
+      const current = gameStateRef.current;
+      if (!current || !current.currentPiece || current.isWon || current.isGameOver) return;
+
       setGameState(prev => {
         if (!prev || !prev.currentPiece) return prev;
 
@@ -562,9 +582,10 @@ export default function TetrisPuzzle({ onBack }: TetrisPuzzleProps) {
     return () => {
       if (dropIntervalRef.current) {
         clearInterval(dropIntervalRef.current);
+        dropIntervalRef.current = null;
       }
     };
-  }, [gameState?.currentPiece, gameState?.isWon, gameState?.isGameOver, isFastDrop]);
+  }, [isFastDrop, gameState?.isWon, gameState?.isGameOver, !!gameState?.currentPiece]);
 
   // Show modals
   useEffect(() => {

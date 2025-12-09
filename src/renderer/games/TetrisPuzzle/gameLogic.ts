@@ -556,7 +556,33 @@ export function movePiece(
   return null;
 }
 
-// Rotate piece
+// SRS Wall Kick data for JLSTZ pieces
+// Format: [col offset, row offset] for each test
+// Key: "fromRotation->toRotation"
+const SRS_WALL_KICKS_JLSTZ: Record<string, [number, number][]> = {
+  '0->1': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '1->0': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '1->2': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '2->1': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '2->3': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+  '3->2': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '3->0': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '0->3': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+};
+
+// SRS Wall Kick data for I piece
+const SRS_WALL_KICKS_I: Record<string, [number, number][]> = {
+  '0->1': [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+  '1->0': [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+  '1->2': [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]],
+  '2->1': [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+  '2->3': [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+  '3->2': [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+  '3->0': [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+  '0->3': [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]],
+};
+
+// Rotate piece using SRS (Super Rotation System)
 export function rotatePiece(
   piece: Piece,
   direction: 1 | -1,
@@ -564,6 +590,13 @@ export function rotatePiece(
   fieldWidth: number,
   fieldHeight: number
 ): Piece | null {
+  // O piece doesn't rotate visually different
+  if (piece.type === 'O') {
+    // Still update visual rotation for the image
+    const newVisualRotation = (piece.visualRotation + direction + 4) % 4;
+    return { ...piece, visualRotation: newVisualRotation };
+  }
+
   const newRotation = (piece.rotation + direction + 4) % 4;
   const newVisualRotation = (piece.visualRotation + direction + 4) % 4;
 
@@ -573,13 +606,14 @@ export function rotatePiece(
     visualRotation: newVisualRotation,
   };
 
-  if (canPlacePiece(newPiece, occupiedCells, fieldWidth, fieldHeight)) {
-    return newPiece;
-  }
+  // Get wall kick table
+  const kickTable = piece.type === 'I' ? SRS_WALL_KICKS_I : SRS_WALL_KICKS_JLSTZ;
+  const kickKey = `${piece.rotation}->${newRotation}`;
+  const kicks = kickTable[kickKey] || [[0, 0]];
 
-  // Wall kicks
-  for (const [kickRow, kickCol] of [[0, -1], [0, 1], [0, -2], [0, 2], [-1, 0], [1, 0]]) {
-    const kickedPiece = { ...newPiece, row: piece.row + kickRow, col: piece.col + kickCol };
+  // Try each wall kick
+  for (const [kickCol, kickRow] of kicks) {
+    const kickedPiece = { ...newPiece, row: piece.row - kickRow, col: piece.col + kickCol };
     if (canPlacePiece(kickedPiece, occupiedCells, fieldWidth, fieldHeight)) {
       return kickedPiece;
     }
@@ -628,16 +662,6 @@ export function dropPiece(
     currentPiece = nextPiece;
   }
   return currentPiece;
-}
-
-// Check win condition
-export function checkWinCondition(placedPieces: PlacedPiece[]): boolean {
-  return placedPieces.every(p =>
-    p.row === p.targetRow &&
-    p.col === p.targetCol &&
-    p.rotation === p.targetRotation &&
-    p.visualRotation === 0
-  );
 }
 
 // Calculate correct pieces
