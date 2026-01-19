@@ -79,6 +79,7 @@ const CanvasContainer = styled.div`
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  touch-action: none;
 `;
 
 const GameOverLine = styled.div`
@@ -388,9 +389,18 @@ export const SuikaGame: React.FC<SuikaGameProps> = ({ onBack }) => {
     gameRef.current.dropBall();
   }, [gameState.isGameOver]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!gameRef.current || gameState.isGameOver) return;
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    if (!gameRef.current || gameState.isGameOver) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.touches[0].clientX - rect.left;
+    gameRef.current.setDropX(x);
+  }, [gameState.isGameOver]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!gameRef.current || gameState.isGameOver) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = e.touches[0].clientX - rect.left;
@@ -529,6 +539,7 @@ export const SuikaGame: React.FC<SuikaGameProps> = ({ onBack }) => {
             height={GAME_CONFIG.containerHeight}
             onMouseMove={handleMouseMove}
             onClick={handleClick}
+            onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           />
