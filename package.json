@@ -20,6 +20,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "@types/matter-js": "^0.20.0",
     "@types/node": "^20.10.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -33,6 +34,7 @@
   },
   "dependencies": {
     "framer-motion": "^12.23.25",
+    "matter-js": "^0.20.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "styled-components": "^6.1.19"
