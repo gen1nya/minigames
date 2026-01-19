@@ -3,8 +3,9 @@ import styled, { createGlobalStyle } from 'styled-components';
 import SortingGame from './games/SortingGame';
 import GradientGame from './games/GradientGame';
 import TetrisPuzzle from './games/TetrisPuzzle';
+import SuikaGame from './games/SuikaGame';
 
-type Screen = 'home' | 'sorting-game' | 'gradient-game' | 'tetris-puzzle';
+type Screen = 'home' | 'sorting-game' | 'gradient-game' | 'tetris-puzzle' | 'suika-game';
 
 // Parse game parameter from URL
 const getScreenFromURL = (): Screen => {
@@ -19,6 +20,8 @@ const getScreenFromURL = (): Screen => {
       return 'gradient-game';
     case 'tetris':
       return 'tetris-puzzle';
+    case 'suika':
+      return 'suika-game';
     default:
       // Legacy support: if seed or difficulty params exist, it's a SortingGame link
       if (params.has('seed') || params.has('difficulty')) {
@@ -54,6 +57,7 @@ const updateURL = (screen: Screen, preserveParams = false) => {
       'sorting-game': 'sorting',
       'gradient-game': 'gradient',
       'tetris-puzzle': 'tetris',
+      'suika-game': 'suika',
     };
     newParams.set('game', gameParamMap[screen]);
     const newURL = `${window.location.pathname}?${newParams.toString()}`;
@@ -193,6 +197,15 @@ function App() {
     );
   }
 
+  if (screen === 'suika-game') {
+    return (
+      <>
+        <GlobalStyle />
+        <SuikaGame onBack={() => navigateTo('home')} />
+      </>
+    );
+  }
+
   return (
     <>
       <GlobalStyle />
@@ -214,6 +227,11 @@ function App() {
             <GameIcon>🧩</GameIcon>
             <GameTitle>Tetris Puzzle</GameTitle>
             <GameDescription>Собери картинку из падающих тетрис-фигур</GameDescription>
+          </GameCard>
+          <GameCard onClick={() => navigateTo('suika-game')}>
+            <GameIcon>🍉</GameIcon>
+            <GameTitle>Suika Game</GameTitle>
+            <GameDescription>Объединяй одинаковые шарики в большие</GameDescription>
           </GameCard>
         </GamesGrid>
       </Container>
